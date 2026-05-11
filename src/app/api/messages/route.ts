@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { getChatResponse } from "@/lib/gemini";
+import { getChatResponse, AIProvider } from "@/lib/ai-provider";
+import { decrypt } from "@/lib/encryption";
 
 export async function GET(req: Request) {
   try {
@@ -33,24 +34,61 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = parseInt((session.user as any).id);
     const { chatId, content, isReroll, oldAiMessageId } = await req.json();
 
     if (!chatId || !content) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Get Chat and Character Info
+    // 1. Get Chat, Character, User AI Settings and Archive
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      include: { character: true },
+      include: { 
+        character: true,
+        archive: true // Include archive content
+      },
     });
 
     if (!chat) {
       return NextResponse.json({ message: "Chat not found" }, { status: 404 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultProvider: true, apiKey: true }
+    });
+
+    // Determine Provider and Key with layered priority
+    const provider: AIProvider = (chat.character.provider as AIProvider) || (user?.defaultProvider as AIProvider) || "gemini";
+    let apiKey = "";
+
+    try {
+      if (chat.character.apiKey) {
+        apiKey = decrypt(chat.character.apiKey);
+      } else if (user?.apiKey) {
+        apiKey = decrypt(user.apiKey);
+      }
+    } catch (e) {
+      console.error("Failed to decrypt API key:", e);
+    }
+
+    // Fallback to ENV if no key found in DB
+    if (!apiKey) {
+      if (provider === "gemini") apiKey = process.env.GOOGLE_AI_API_KEY || "";
+      else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
+      else if (provider === "claude") apiKey = process.env.ANTHROPIC_API_KEY || "";
+      else if (provider === "grok") apiKey = process.env.XAI_API_KEY || "";
+    }
+
+    if (!apiKey) {
+      return NextResponse.json({ 
+        message: `API Key for ${provider} is missing. Please set it in Settings or Character settings.` 
+      }, { status: 400 });
     }
 
     let userMessage = null;
@@ -70,24 +108,33 @@ export async function POST(req: Request) {
     const previousMessages = await prisma.message.findMany({
       where: { 
         chatId,
-        id: isReroll ? { not: oldAiMessageId } : undefined // Exclude the message we are re-rolling
+        id: isReroll ? { not: oldAiMessageId } : undefined 
       },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
-    // Format history for Gemini (Gemini uses 'user' and 'model' roles)
+    // Format history for unified dispatcher
     const history = previousMessages
       .filter(m => !userMessage || m.id !== userMessage.id) 
       .reverse()
       .map(m => ({
-        role: (m.role === "user" ? "user" : "model") as "user" | "model",
-        parts: [{ text: m.content }],
+        role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: m.content,
       }));
+
+    // Construct final system prompt with Archive context if available
+    let finalSystemPrompt = chat.character.systemPrompt;
+    if (chat.archive) {
+      finalSystemPrompt = `USER IDENTITY ARCHIVE:\n${chat.archive.content}\n\n${finalSystemPrompt}`;
+    }
 
     // 4. Get AI Response
     const aiResponseText = await getChatResponse(
-      chat.character.systemPrompt,
+      provider,
+      apiKey,
+      provider === "gemini" ? process.env.GEMINI_MODEL || "" : "", // Model override can be added later
+      finalSystemPrompt,
       history,
       content
     );

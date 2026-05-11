@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { encrypt } from "@/lib/encryption";
 
 export async function PATCH(
   req: Request,
@@ -30,17 +31,26 @@ export async function PATCH(
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl } = await req.json();
+    const { name, description, systemPrompt, greeting, avatarUrl, provider, apiKey } = await req.json();
+
+    const updateData: any = {
+      name,
+      description,
+      systemPrompt,
+      greeting,
+      avatarUrl,
+      provider: provider || null,
+    };
+
+    if (apiKey && !apiKey.endsWith("...")) {
+      updateData.apiKey = encrypt(apiKey);
+    } else if (apiKey === "") {
+      updateData.apiKey = null;
+    }
 
     const updatedCharacter = await prisma.character.update({
       where: { id },
-      data: {
-        name,
-        description,
-        systemPrompt,
-        greeting,
-        avatarUrl,
-      },
+      data: updateData,
     });
 
     return NextResponse.json(updatedCharacter);

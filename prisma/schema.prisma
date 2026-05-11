@@ -10,15 +10,18 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  name      String
-  username  String    @unique
-  password  String    // bcrypt hashed
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  name            String    // Display name
+  username        String    @unique
+  password        String    // bcrypt hashed
+  defaultProvider String?   @map("default_provider")
+  apiKey          String?   @map("api_key")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   characters Character[]
   chats      Chat[]
+  archives   UserArchive[]
 
   @@map("users")
 }
@@ -30,6 +33,8 @@ model Character {
   avatarUrl    String?   @map("avatar_url")
   systemPrompt String    @map("system_prompt")
   greeting     String
+  provider     String?   @map("provider")
+  apiKey       String?   @map("api_key")
   createdBy    Int       @map("created_by")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -40,15 +45,32 @@ model Character {
   @@map("characters")
 }
 
-model Chat {
-  id          Int       @id @default(autoincrement())
-  characterId Int       @map("character_id")
-  userId      Int       @map("user_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+model UserArchive {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String
+  content   String
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chats Chat[]
+
+  @@map("user_archives")
+}
+
+model Chat {
+  id          Int      @id @default(autoincrement())
+  characterId Int      @map("character_id")
+  userId      Int      @map("user_id")
+  archiveId   Int?     @map("archive_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  character Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  archive   UserArchive? @relation(fields: [archiveId], references: [id], onDelete: SetNull)
   messages  Message[]
 
   @@map("chats")

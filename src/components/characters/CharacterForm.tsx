@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus } from "lucide-react";
+import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus, Key, Brain, ChevronDown, ChevronUp } from "lucide-react";
+import ProviderSelector from "@/components/settings/ProviderSelector";
 
 interface CharacterFormProps {
   initialData?: {
@@ -12,6 +13,8 @@ interface CharacterFormProps {
     systemPrompt: string;
     greeting: string;
     avatarUrl?: string;
+    provider?: string;
+    apiKey?: string;
   };
   mode: "create" | "edit";
 }
@@ -24,7 +27,10 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
     systemPrompt: initialData?.systemPrompt || "",
     greeting: initialData?.greeting || "",
     avatarUrl: initialData?.avatarUrl || "",
+    provider: initialData?.provider || "",
+    apiKey: initialData?.apiKey || "",
   });
+  const [showOverride, setShowOverride] = useState(!!initialData?.provider || !!initialData?.apiKey);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.avatarUrl || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -208,6 +214,54 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
             </p>
           </div>
         </div>
+      </div>
+
+      {/* AI Provider Override Section */}
+      <div className="border-t border-zinc-800 pt-8">
+        <button
+          type="button"
+          onClick={() => setShowOverride(!showOverride)}
+          className="flex items-center justify-between w-full p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5 text-indigo-400" />
+            <div className="text-left">
+              <h3 className="font-bold text-white group-hover:text-indigo-400 transition-colors">AI Provider Override</h3>
+              <p className="text-xs text-zinc-500">Optional: Use a specific AI model or API key for this character only</p>
+            </div>
+          </div>
+          {showOverride ? <ChevronUp className="w-5 h-5 text-zinc-500" /> : <ChevronDown className="w-5 h-5 text-zinc-500" />}
+        </button>
+
+        {showOverride && (
+          <div className="mt-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="space-y-4">
+              <label className="text-sm font-medium text-zinc-400 ml-1">Select Provider</label>
+              <ProviderSelector 
+                value={formData.provider || "gemini"} 
+                onChange={(val) => setFormData({ ...formData, provider: val })} 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
+                <Key className="w-4 h-4" /> Override API Key
+              </label>
+              <input
+                type="password"
+                value={formData.apiKey}
+                onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                placeholder="Enter character-specific API key (optional)..."
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-zinc-100"
+              />
+              {formData.apiKey.endsWith("...") && (
+                <p className="text-[10px] text-zinc-500 mt-1 ml-1 italic">
+                  Note: An override key is already saved. Leave it to keep it, or clear it to use your global key.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between pt-8 border-t border-zinc-800">

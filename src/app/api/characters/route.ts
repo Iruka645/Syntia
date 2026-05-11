@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { encrypt } from "@/lib/encryption";
 
 export async function GET() {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl } = await req.json();
+    const { name, description, systemPrompt, greeting, avatarUrl, provider, apiKey } = await req.json();
 
     if (!name || !description || !systemPrompt || !greeting) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
         systemPrompt,
         greeting,
         avatarUrl,
+        provider: provider || null,
+        apiKey: apiKey ? encrypt(apiKey) : null,
         createdBy: parseInt((session.user as any).id),
       },
     });

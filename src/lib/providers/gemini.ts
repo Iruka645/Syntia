@@ -1,23 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export async function getChatResponse(
+export async function getGeminiResponse(
+  apiKey: string,
+  modelName: string,
   systemPrompt: string,
-  history: { role: "user" | "model"; parts: { text: string }[] }[],
+  history: { role: "user" | "assistant"; content: string }[],
   userMessage: string
 ) {
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  // ดึงชื่อโมเดลจาก .env (เริ่มต้นด้วย 3.1-flash-lite)
-  const gemini_model = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
-  
-  if (!apiKey) {
-    throw new Error("GOOGLE_AI_API_KEY is not defined in environment variables");
-  }
-
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const maxTokens = parseInt(process.env.MAX_OUTPUT_TOKENS || "800");
 
-    // คำสั่งกลางเพื่อควบคุมสไตล์การตอบแบบ Roleplay
     const GLOBAL_RESPONSE_GUIDE = `
 [ROLEPLAY & CONVERSATION GUIDELINE]:
 - ALWAYS stay in character. Never acknowledge you are an AI.
@@ -30,15 +23,21 @@ export async function getChatResponse(
     const combinedPrompt = `${systemPrompt}\n${GLOBAL_RESPONSE_GUIDE}`;
 
     const model = genAI.getGenerativeModel({ 
-      model: gemini_model,
+      model: modelName || "gemini-2.0-flash-lite",
       systemInstruction: combinedPrompt,
       generationConfig: {
         maxOutputTokens: maxTokens,
       }
     });
 
+    // Convert unified history to Gemini history
+    const geminiHistory = history.map(msg => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }]
+    }));
+
     const chat = model.startChat({
-      history: history,
+      history: geminiHistory as any,
     });
 
     const result = await chat.sendMessage(userMessage);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { User, MessageCircle, Plus, LogOut, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -68,12 +69,25 @@ export default function CharacterSelection() {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700/50">
-              <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center">
-                <User className="w-4 h-4 text-zinc-400" />
+            <Link 
+              href="/settings"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 transition-all group cursor-pointer"
+              title="AI Settings"
+            >
+              <div className="w-6 h-6 rounded-full bg-zinc-700 group-hover:bg-indigo-600 flex items-center justify-center transition-colors">
+                <User className="w-4 h-4 text-zinc-400 group-hover:text-white" />
               </div>
-              <span className="text-sm font-medium">{session?.user?.name}</span>
-            </div>
+              <span className="text-sm font-medium group-hover:text-indigo-400 transition-colors">{session?.user?.name}</span>
+            </Link>
+
+            <button 
+              onClick={() => router.push("/settings")}
+              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-indigo-400"
+              title="AI Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+
             <button 
               onClick={() => signOut()}
               className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-red-400"

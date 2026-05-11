@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import CharacterFormComp from "@/components/CharacterForm";
+import CharacterFormComp from "@/components/characters/CharacterForm";
 import { Settings, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -70,9 +70,12 @@ export default function EditCharacterPage({ params }: { params: Promise<{ id: st
           <CharacterFormComp mode="edit" initialData={{
             id: character.id,
             name: character.name,
-            description: character.description,
+            description: character.description || "",
             systemPrompt: character.systemPrompt,
-            greeting: character.greeting
+            greeting: character.greeting,
+            avatarUrl: (character as any).avatarUrl,
+            provider: (character as any).provider,
+            apiKey: (character as any).apiKey
           }} />
         </div>
       </div>

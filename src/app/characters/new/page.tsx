@@ -1,9 +1,8 @@
 "use client";
 
-import CharacterForm from "@/components/Providers"; // Wait, I imported from Providers by mistake in my thought but I'll fix it in the code
 import { Sparkles, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import CharacterFormComp from "@/components/CharacterForm";
+import CharacterFormComp from "@/components/characters/CharacterForm";
 
 export default function NewCharacterPage() {
   return (

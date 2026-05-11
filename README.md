@@ -7,20 +7,26 @@
 ## 📋 สิ่งที่ต้องเตรียม (Prerequisites)
 
 ก่อนเริ่มการติดตั้ง โปรดตรวจสอบว่าเครื่องของคุณได้ติดตั้งโปรแกรมเหล่านี้แล้ว:
-1.  **Node.js** (เวอร์ชัน 18.x ขึ้นไป) https://nodejs.org/en/download
-2.  **npm** (ปกติจะติดตั้งมาพร้อมกับ Node.js)
-3.  **Git** (สำหรับ Clone โปรเจกต์) https://git-scm.com/install/
+1.  **Node.js** (เวอร์ชัน 18.x ขึ้นไป) https://nodejs.org/en/download <--- required
+2.  **npm** (ปกติจะติดตั้งมาพร้อมกับ Node.js)                          <--- required
+3.  **Git** (สำหรับ Clone โปรเจกต์) https://git-scm.com/install/    <--- Optional
 
 ---
 
 ## 🚀 ขั้นตอนการติดตั้ง (Installation Steps)
 
-### 1. Clone โปรเจกต์
-ดาวน์โหลดโค้ดลงเครื่องของคุณด้วยคำสั่ง:
+### 1. Clone โปรเจกต์ หรือดาวน์โหลด Zip file
+Clone (Git required):
+ดาวน์โหลดโค้ดลงเครื่องของคุณด้วยคำสั่งบน cmd/ps:
 ```bash
 git clone <URL_ของ_Repository>
 cd MyChatBot/app
 ```
+
+Zip file:
+- ดาวน์โหลดแล้วแตกไฟล์
+- จากนั้นเข้าไปในโฟลเดอร์ app แล้วเปิด cmd/ps
+ผ่าน Address Bar ของ Exlorer
 
 ### 2. ติดตั้ง Dependencies
 ใช้ npm เพื่อติดตั้ง Library ทั้งหมดที่จำเป็น:

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛠️ คู่มือการติดตั้ง Syntia สำหรับผู้ใช้ใหม่
 
-## Getting Started
+คู่มือนี้จะแนะนำขั้นตอนการติดตั้งและรันโปรเจกต์ **Syntia** บนเครื่องคอมพิวเตอร์ของคุณ (Local Machine) ตั้งแต่เริ่มต้น
 
-First, run the development server:
+---
 
+## 📋 สิ่งที่ต้องเตรียม (Prerequisites)
+
+ก่อนเริ่มการติดตั้ง โปรดตรวจสอบว่าเครื่องของคุณได้ติดตั้งโปรแกรมเหล่านี้แล้ว:
+1.  **Node.js** (เวอร์ชัน 18.x ขึ้นไป) https://nodejs.org/en/download
+2.  **npm** (ปกติจะติดตั้งมาพร้อมกับ Node.js)
+3.  **Git** (สำหรับ Clone โปรเจกต์) https://git-scm.com/install/
+
+---
+
+## 🚀 ขั้นตอนการติดตั้ง (Installation Steps)
+
+### 1. Clone โปรเจกต์
+ดาวน์โหลดโค้ดลงเครื่องของคุณด้วยคำสั่ง:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <URL_ของ_Repository>
+cd MyChatBot/app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. ติดตั้ง Dependencies
+ใช้ npm เพื่อติดตั้ง Library ทั้งหมดที่จำเป็น:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. ตั้งค่า Environment Variables (.env)
+โปรเจกต์นี้จำเป็นต้องใช้ค่าคอนฟิกบางอย่างที่คุณต้องกำหนดเอง:
+1.  คัดลอกไฟล์ `.env.example` และเปลี่ยนชื่อเป็น `.env`
+    ```bash
+    cp .env.example .env
+    ```
+2.  เปิดไฟล์ `.env` ด้วยโปรแกรมแก้ไขข้อความ (เช่น VS Code) และใส่ข้อมูลดังนี้:
+    *   **GOOGLE_AI_API_KEY**: ใส่คีย์ Gemini API ของคุณ (ขอได้ที่ [Google AI Studio](https://aistudio.google.com/))
+    *   **NEXTAUTH_SECRET**: ใส่ข้อความสุ่มอะไรก็ได้ (ใช้สำหรับเข้ารหัส Session)
+    *   **NEXTAUTH_URL**: หากรันในเครื่องตัวเองให้ใช้ `http://localhost:3500`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. เริ่มรันโปรแกรม
+คุณสามารถเลือกรันได้ 2 โหมด:
 
-## Learn More
+**โหมดพัฒนา (Development Mode):**
+ใช้เมื่อต้องการแก้ไขโค้ดและดูผลลัพธ์ทันที
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+**โหมดใช้งานในวงแลน (LAN Hosting - แนะนำ):**
+ใช้เมื่อต้องการให้เครื่องอื่นๆ เข้าใช้งานได้ **ระบบจะทำการเตรียมฐานข้อมูลให้อัตโนมัติ**
+```bash
+npm run lan
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📱 การเข้าใช้งาน (How to access)
 
-## Deploy on Vercel
+*   **ในเครื่องตัวเอง:** เปิด Browser ไปที่ [http://localhost:3500](http://localhost:3500)
+*   **ผ่านวงแลน:** ใช้หมายเลข IP ของเครื่อง Host (เช่น `http://[IP_ADDRESS (e.g 192.168.1.10)]/:3500`) ตรวจสอบ IP ด้วยคำสั่ง `ipconfig`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ❓ ปัญหาที่พบบ่อย (Troubleshooting)
+
+*   **Error: GOOGLE_AI_API_KEY is missing**: ตรวจสอบว่าคุณได้ใส่คีย์ในไฟล์ `.env` และไม่ได้ใส่เครื่องหมายอัญประกาศ (`""`) ครอบไว้
+*   **Login ไม่ได้**: ตรวจสอบว่า `NEXTAUTH_URL` ในไฟล์ `.env` ตรงกับ URL ที่คุณกำลังเปิดใช้งานอยู่หรือไม่
+*   **เครื่องอื่นเข้าไม่ได้**: ตรวจสอบว่าคุณได้รันด้วยคำสั่ง `npm run lan` และได้เปิดพอร์ต **3500** ใน Windows Firewall แล้ว
+
+---
+*จัดทำโดย: Antigravity AI Assistant*

@@ -10,7 +10,16 @@ import {
   MoreVertical, 
   Loader2, 
   Bot,
-  MessageSquare
+  MessageSquare,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  Undo2,
+  RefreshCw,
+  Sparkles,
+  Check,
+  X as CloseIcon,
+  ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 
@@ -44,8 +53,150 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [rollBackState, setRollBackState] = useState<{ id: number, content: string } | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    if (activeMenuId) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [activeMenuId]);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+    try {
+      const res = await fetch(`/api/messages/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        // Remove from UI (and if it's user, the cascading next assistant message)
+        const msgIndex = messages.findIndex(m => m.id === id);
+        if (msgIndex !== -1) {
+          const msgToDelete = messages[msgIndex];
+          let newMessages = [...messages];
+          if (msgToDelete.role === "user" && messages[msgIndex + 1]?.role === "assistant") {
+            newMessages.splice(msgIndex, 2); // Delete both
+          } else {
+            newMessages.splice(msgIndex, 1);
+          }
+          setMessages(newMessages);
+        }
+      }
+    } catch (error) {
+      console.error("Delete Error:", error);
+    }
+  };
+
+  const handleEdit = async (id: number) => {
+    if (!editValue.trim()) return;
+    try {
+      const res = await fetch(`/api/messages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editValue }),
+      });
+      if (res.ok) {
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: editValue } : m));
+        setEditingMessageId(null);
+      }
+    } catch (error) {
+      console.error("Edit Error:", error);
+    }
+  };
+
+  const handleReroll = async (msgId: number) => {
+    if (isSending || !chat) return;
+    
+    const aiMsg = messages.find(m => m.id === msgId);
+    if (!aiMsg) return;
+
+    // Save for undo
+    setRollBackState({ id: aiMsg.id, content: aiMsg.content });
+    
+    setIsSending(true);
+    try {
+      // 1. Get history up to this message's prompt
+      const msgIndex = messages.findIndex(m => m.id === msgId);
+      const userPrompt = messages[msgIndex - 1]?.content;
+      if (!userPrompt) throw new Error("No prompt found for re-roll");
+
+      // 2. We use the same POST endpoint but we will replace the AI message
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: chat.id,
+          content: userPrompt,
+          isReroll: true,
+          oldAiMessageId: aiMsg.id
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Replace the old AI message with the new one
+        setMessages(prev => prev.map(m => m.id === msgId ? data.aiMessage : m));
+      }
+    } catch (error) {
+      console.error("Reroll Error:", error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleUndoReroll = async () => {
+    if (!rollBackState || !chat) return;
+    try {
+      // Revert in DB (Optional: just update the content back)
+      const res = await fetch(`/api/messages/${rollBackState.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: rollBackState.content }),
+      });
+      if (res.ok) {
+        setMessages(prev => prev.map(m => m.id === rollBackState.id ? { ...m, content: rollBackState.content } : m));
+        setRollBackState(null);
+      }
+    } catch (error) {
+      console.error("Undo Error:", error);
+    }
+  };
+
+  const handleResend = async (id: number) => {
+    if (isSending || !chat) return;
+    const userMsg = messages.find(m => m.id === id);
+    if (!userMsg) return;
+
+    // Trigger the same send logic but with the existing content
+    setInputValue(""); // Clear input just in case
+    setIsSending(true);
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: chat.id,
+          content: userMsg.content,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Since we are resending, we just add the AI message (user message is already there)
+        setMessages((prev) => [...prev, data.aiMessage]);
+      }
+    } catch (error) {
+      console.error("Resend Error:", error);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,7 +218,7 @@ export default function ChatPage() {
         setChat(chatData);
 
         // 2. Fetch Messages
-        const msgRes = await fetch(`/api/messages/${chatData.id}`);
+        const msgRes = await fetch(`/api/messages?chatId=${chatData.id}`);
         if (msgRes.ok) {
           const msgData = await msgRes.json();
           if (msgData.length === 0 && chatData.character.greeting) {
@@ -98,8 +249,8 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!inputValue.trim() || !chat || isSending) return;
 
     const userMessage = inputValue;
@@ -181,10 +332,10 @@ export default function ChatPage() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6">
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <div 
             key={msg.id} 
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex group ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div className={`flex gap-3 max-w-[80%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               {/* Avatar for AI */}
@@ -198,19 +349,133 @@ export default function ChatPage() {
                 </div>
               )}
               
-              <div className={`space-y-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                <div 
-                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === "user" 
-                      ? "bg-indigo-600 text-white rounded-tr-none" 
-                      : "bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-none shadow-sm"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-                <p className="text-[10px] text-zinc-600 px-1">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+              <div className={`space-y-1 relative ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                {editingMessageId === msg.id ? (
+                  <div className="flex flex-col gap-2 min-w-[240px]">
+                    <textarea 
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="w-full bg-zinc-900 border border-indigo-500/50 rounded-xl p-3 text-sm focus:outline-none"
+                      rows={3}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => setEditingMessageId(null)}
+                        className="px-3 py-1 text-xs text-zinc-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(msg.id)}
+                        className="px-3 py-1 text-xs bg-indigo-600 rounded-lg font-bold"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group/bubble">
+                    <div 
+                      className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                        msg.role === "user" 
+                          ? "bg-indigo-600 text-white rounded-tr-none" 
+                          : "bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-none shadow-sm"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+
+                    {/* Action Menu Trigger (Three Dots) */}
+                    <div className={`flex items-center gap-2 mt-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <p className="text-[10px] text-zinc-600">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuId(activeMenuId === msg.id ? null : msg.id);
+                          }}
+                          className="p-1 text-zinc-600 hover:text-zinc-400 transition-colors"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {activeMenuId === msg.id && (
+                          <div className={`absolute bottom-full mb-2 w-32 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 py-1 ${
+                            msg.role === "user" ? "right-0" : "left-0"
+                          }`}>
+                            {msg.role === "user" ? (
+                              <>
+                                {index === messages.length - 1 && (
+                                  <button 
+                                    onClick={() => handleResend(msg.id)}
+                                    className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-800 text-indigo-400 flex items-center gap-2"
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5" /> Resend
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => {
+                                    setEditingMessageId(msg.id);
+                                    setEditValue(msg.content);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-800 flex items-center gap-2"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleDelete(msg.id)}
+                                  className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-800 text-red-400 flex items-center gap-2"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {index === messages.length - 1 && (
+                                  <button 
+                                    onClick={() => handleReroll(msg.id)}
+                                    className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-800 text-indigo-400 flex items-center gap-2"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" /> Re-roll
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => handleDelete(msg.id)}
+                                  className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-800 text-red-400 flex items-center gap-2"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Re-roll Accept/Decline UI */}
+                    {rollBackState?.id === msg.id && msg.role === "assistant" && (
+                      <div className="mt-3 flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 rounded-xl p-2 w-fit">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase px-2">New response?</span>
+                        <button 
+                          onClick={() => setRollBackState(null)}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-lg text-[10px] font-bold hover:bg-green-500/20 transition-all"
+                        >
+                          <Check className="w-3 h-3" /> Accept
+                        </button>
+                        <button 
+                          onClick={handleUndoReroll}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-500/20 transition-all"
+                        >
+                          <CloseIcon className="w-3 h-3" /> Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -236,21 +501,23 @@ export default function ChatPage() {
 
       {/* Input Area */}
       <div className="p-6 bg-zinc-950 border-t border-zinc-900">
-        <form 
-          onSubmit={handleSendMessage}
-          className="max-w-4xl mx-auto relative flex items-center gap-3"
-        >
+        <div className="max-w-4xl mx-auto relative flex items-end gap-3">
           <div className="relative flex-1">
-            <input 
-              type="text"
+            <textarea 
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type your message..."
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-5 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-zinc-600"
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                // Auto-resize logic
+                e.target.style.height = 'inherit';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+              }}
+              placeholder="Type your message... (Enter for new line)"
+              rows={1}
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-5 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-zinc-600 resize-none min-h-[56px] max-h-[200px] overflow-y-auto"
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-3 bottom-3 flex items-center gap-2">
               <button 
-                type="submit"
+                onClick={handleSendMessage}
                 disabled={!inputValue.trim() || isSending}
                 className={`p-2 rounded-xl transition-all ${
                   inputValue.trim() && !isSending 
@@ -258,13 +525,17 @@ export default function ChatPage() {
                     : "text-zinc-600 bg-zinc-800 cursor-not-allowed"
                 }`}
               >
-                <Send className="w-5 h-5" />
+                {isSending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
-        </form>
+        </div>
         <p className="text-center text-[10px] text-zinc-600 mt-4">
-          Character responses are generated by AI and may be inaccurate.
+          Character responses are generated by AI. Manual send required.
         </p>
       </div>
     </div>

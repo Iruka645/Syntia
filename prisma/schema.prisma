@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  username  String    @unique
+  password  String    // bcrypt hashed
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  characters Character[]
+  chats      Chat[]
+
+  @@map("users")
+}
+
+model Character {
+  id           Int       @id @default(autoincrement())
+  name         String
+  description  String?
+  avatarUrl    String?   @map("avatar_url")
+  systemPrompt String    @map("system_prompt")
+  greeting     String
+  createdBy    Int       @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  creator User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  chats   Chat[]
+
+  @@map("characters")
+}
+
+model Chat {
+  id          Int       @id @default(autoincrement())
+  characterId Int       @map("character_id")
+  userId      Int       @map("user_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  chatId    Int      @map("chat_id")
+  role      String   // 'user' or 'assistant'
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}

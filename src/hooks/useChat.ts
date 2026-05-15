@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Message, Chat } from "@/types";
+import { removeMessageWithAssistantReply } from "@/lib/chat-history";
 
 export function useChat(characterId: string | string[] | undefined) {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   const [chat, setChat] = useState<Chat | null>(null);
@@ -16,9 +17,10 @@ export function useChat(characterId: string | string[] | undefined) {
   const [isSending, setIsSending] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [rollBackState, setRollBackState] = useState<{ id: number, content: string } | null>(null);
+  const [rollBackState, setRollBackState] = useState<{ id: number; content: string } | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
-  
+  const [chatError, setChatError] = useState<{ message: string; rawError?: string } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,12 +50,14 @@ export function useChat(characterId: string | string[] | undefined) {
         if (msgRes.ok) {
           const msgData = await msgRes.json();
           if (msgData.length === 0 && chatData.character.greeting) {
-            setMessages([{
-              id: 0,
-              role: "assistant",
-              content: chatData.character.greeting,
-              createdAt: new Date().toISOString()
-            }]);
+            setMessages([
+              {
+                id: 0,
+                role: "assistant",
+                content: chatData.character.greeting,
+                createdAt: new Date().toISOString(),
+              },
+            ]);
           } else {
             setMessages(msgData);
           }
@@ -81,6 +85,7 @@ export function useChat(characterId: string | string[] | undefined) {
     const userMessage = inputValue;
     setInputValue("");
     setIsSending(true);
+    setChatError(null);
 
     const tempUserMsg: Message = {
       id: Date.now(),
@@ -102,16 +107,33 @@ export function useChat(characterId: string | string[] | undefined) {
 
       if (res.ok) {
         const data = await res.json();
-        setMessages((prev) => [
-          ...prev.filter(m => m.id !== tempUserMsg.id),
-          data.userMessage,
-          data.aiMessage
-        ]);
+        if (data.error) {
+          setChatError({ message: data.message, rawError: data.rawError });
+          setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+          setInputValue(userMessage);
+        } else {
+          setMessages((prev) => [
+            ...prev.filter((m) => m.id !== tempUserMsg.id),
+            data.userMessage,
+            data.aiMessage,
+          ]);
+        }
       } else {
-        throw new Error("Failed to send message");
+        const errData = await res.json().catch(() => null);
+        setChatError({
+          message:
+            errData?.message ||
+            "Failed to communicate with AI model. Please verify your provider/model settings.",
+          rawError: errData?.rawError,
+        });
+        setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+        setInputValue(userMessage);
       }
     } catch (error) {
       console.error("Send Error:", error);
+      setChatError({ message: "Network error while reaching AI service." });
+      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+      setInputValue(userMessage);
     } finally {
       setIsSending(false);
     }
@@ -122,17 +144,7 @@ export function useChat(characterId: string | string[] | undefined) {
     try {
       const res = await fetch(`/api/messages/${id}`, { method: "DELETE" });
       if (res.ok) {
-        const msgIndex = messages.findIndex(m => m.id === id);
-        if (msgIndex !== -1) {
-          const msgToDelete = messages[msgIndex];
-          let newMessages = [...messages];
-          if (msgToDelete.role === "user" && messages[msgIndex + 1]?.role === "assistant") {
-            newMessages.splice(msgIndex, 2);
-          } else {
-            newMessages.splice(msgIndex, 1);
-          }
-          setMessages(newMessages);
-        }
+        setMessages((prev) => removeMessageWithAssistantReply(prev, id));
       }
     } catch (error) {
       console.error("Delete Error:", error);
@@ -148,7 +160,7 @@ export function useChat(characterId: string | string[] | undefined) {
         body: JSON.stringify({ content: editValue }),
       });
       if (res.ok) {
-        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: editValue } : m));
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: editValue } : m)));
         setEditingMessageId(null);
       }
     } catch (error) {
@@ -158,15 +170,16 @@ export function useChat(characterId: string | string[] | undefined) {
 
   const handleReroll = async (msgId: number) => {
     if (isSending || !chat) return;
-    
-    const aiMsg = messages.find(m => m.id === msgId);
+
+    const aiMsg = messages.find((m) => m.id === msgId);
     if (!aiMsg) return;
 
     setRollBackState({ id: aiMsg.id, content: aiMsg.content });
-    
+
     setIsSending(true);
+    setChatError(null);
     try {
-      const msgIndex = messages.findIndex(m => m.id === msgId);
+      const msgIndex = messages.findIndex((m) => m.id === msgId);
       const userPrompt = messages[msgIndex - 1]?.content;
       if (!userPrompt) throw new Error("No prompt found for re-roll");
 
@@ -177,16 +190,27 @@ export function useChat(characterId: string | string[] | undefined) {
           chatId: chat.id,
           content: userPrompt,
           isReroll: true,
-          oldAiMessageId: aiMsg.id
+          oldAiMessageId: aiMsg.id,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setMessages(prev => prev.map(m => m.id === msgId ? data.aiMessage : m));
+        if (data.error) {
+          setChatError({ message: data.message, rawError: data.rawError });
+        } else {
+          setMessages((prev) => prev.map((m) => (m.id === msgId ? data.aiMessage : m)));
+        }
+      } else {
+        const errData = await res.json().catch(() => null);
+        setChatError({
+          message: errData?.message || "Failed to re-roll message. Model might be overloaded.",
+          rawError: errData?.rawError,
+        });
       }
     } catch (error) {
       console.error("Reroll Error:", error);
+      setChatError({ message: "Network error during re-roll." });
     } finally {
       setIsSending(false);
     }
@@ -201,7 +225,11 @@ export function useChat(characterId: string | string[] | undefined) {
         body: JSON.stringify({ content: rollBackState.content }),
       });
       if (res.ok) {
-        setMessages(prev => prev.map(m => m.id === rollBackState.id ? { ...m, content: rollBackState.content } : m));
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === rollBackState.id ? { ...m, content: rollBackState.content } : m
+          )
+        );
         setRollBackState(null);
       }
     } catch (error) {
@@ -211,11 +239,12 @@ export function useChat(characterId: string | string[] | undefined) {
 
   const handleResend = async (id: number) => {
     if (isSending || !chat) return;
-    const userMsg = messages.find(m => m.id === id);
+    const userMsg = messages.find((m) => m.id === id);
     if (!userMsg) return;
 
     setInputValue("");
     setIsSending(true);
+    setChatError(null);
 
     try {
       const res = await fetch("/api/messages", {
@@ -229,10 +258,24 @@ export function useChat(characterId: string | string[] | undefined) {
 
       if (res.ok) {
         const data = await res.json();
-        setMessages((prev) => [...prev, data.aiMessage]);
+        if (data.error) {
+          setChatError({ message: data.message, rawError: data.rawError });
+          setInputValue(userMsg.content);
+        } else {
+          setMessages((prev) => [...prev, data.aiMessage]);
+        }
+      } else {
+        const errData = await res.json().catch(() => null);
+        setChatError({
+          message: errData?.message || "Failed to resend message.",
+          rawError: errData?.rawError,
+        });
+        setInputValue(userMsg.content);
       }
     } catch (error) {
       console.error("Resend Error:", error);
+      setChatError({ message: "Network error during resend." });
+      setInputValue(userMsg.content);
     } finally {
       setIsSending(false);
     }
@@ -270,6 +313,8 @@ export function useChat(characterId: string | string[] | undefined) {
     setRollBackState,
     activeMenuId,
     setActiveMenuId,
+    chatError,
+    setChatError,
     messagesEndRef,
     handleSendMessage,
     handleDelete,

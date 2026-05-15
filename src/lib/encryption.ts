@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_SECRET; // Must be 256 bits (32 characters)
-const IV_LENGTH = 12; // For AES-256-GCM
-const AUTH_TAG_LENGTH = 16;
 
 export function encrypt(text: string): string {
   if (!ENCRYPTION_KEY) {
@@ -13,7 +11,7 @@ export function encrypt(text: string): string {
     throw new Error('ENCRYPTION_SECRET must be exactly 32 characters long');
   }
 
-  const iv = crypto.randomBytes(IV_LENGTH);
+  const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY), iv);
 
   let encrypted = cipher.update(text, 'utf8', 'hex');

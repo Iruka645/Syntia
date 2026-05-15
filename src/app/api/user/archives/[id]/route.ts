@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -14,9 +14,10 @@ export async function GET(
   }
 
   try {
+    const { id: paramId } = await params;
     const archive = await prisma.userArchive.findFirst({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(paramId),
         userId: parseInt((session.user as any).id),
       },
     });
@@ -34,7 +35,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -46,7 +47,8 @@ export async function PATCH(
     const body = await req.json();
     const { name, content, isDefault } = body;
     const userId = parseInt((session.user as any).id);
-    const archiveId = parseInt(params.id);
+    const { id: paramId } = await params;
+    const archiveId = parseInt(paramId);
 
     // Verify ownership
     const existing = await prisma.userArchive.findFirst({
@@ -83,7 +85,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -93,7 +95,8 @@ export async function DELETE(
 
   try {
     const userId = parseInt((session.user as any).id);
-    const archiveId = parseInt(params.id);
+    const { id: paramId } = await params;
+    const archiveId = parseInt(paramId);
 
     // Verify ownership
     const existing = await prisma.userArchive.findFirst({

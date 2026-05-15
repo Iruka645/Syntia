@@ -7,7 +7,27 @@
     "lan": "npx prisma generate && npx prisma migrate deploy && next dev -p 3500 -H 0.0.0.0",
     "build": "next build",
     "start": "next start -p 3500",
-    "lint": "eslint"
+    "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint-staged": "lint-staged",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& playwright test",
+    "test:e2e:run": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& set PLAYWRIGHT_EXTERNAL_SERVER=1&& playwright test",
+    "playwright:install": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& playwright install chromium",
+    "validate": "npm run lint && npm run type-check && npm run test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md,mjs,mts}": [
+      "prettier --write"
+    ],
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ]
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -29,14 +49,26 @@
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.6"
   }
 }

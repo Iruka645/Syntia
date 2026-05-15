@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl, provider, apiKey } = await req.json();
+    const { name, description, systemPrompt, greeting, avatarUrl, provider, model, apiKey } = await req.json();
 
     if (!name || !description || !systemPrompt || !greeting) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
         greeting,
         avatarUrl,
         provider: provider || null,
+        model: model || null,
         apiKey: apiKey ? encrypt(apiKey) : null,
         createdBy: parseInt((session.user as any).id),
       },

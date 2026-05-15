@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProviderSelector from "@/components/settings/ProviderSelector";
+import ModelSelector from "@/components/settings/ModelSelector";
 import ArchiveList from "@/components/settings/ArchiveList";
 import { 
   Save, Key, Brain, CheckCircle2, AlertCircle, 
-  ArrowLeft, User as UserIcon, Shield, ScrollText 
+  ArrowLeft, User as UserIcon, Shield, ScrollText, Cpu, Play
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -21,7 +22,12 @@ export default function SettingsPage() {
 
   // AI Provider State
   const [provider, setProvider] = useState("gemini");
+  const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
+
+  // Testing State
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string; modelUsed?: string } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -35,6 +41,7 @@ export default function SettingsPage() {
         setName(data.name || "");
         setUsername(data.username || "");
         setProvider(data.defaultProvider);
+        setModel(data.defaultModel || "");
         setApiKey(data.apiKey || "");
       }
     } catch (error) {
@@ -56,6 +63,7 @@ export default function SettingsPage() {
           username, 
           password: password || undefined, 
           defaultProvider: provider, 
+          defaultModel: model,
           apiKey 
         }),
       });
@@ -72,6 +80,38 @@ export default function SettingsPage() {
       setMessage({ type: "error", text: "An error occurred while saving." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/user/test-model", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey, model }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestResult({
+          success: true,
+          message: data.message,
+          modelUsed: data.modelUsed
+        });
+      } else {
+        setTestResult({
+          success: false,
+          error: data.error || "Testing failed. Model may be unavailable."
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        error: "Network error while connecting to test endpoint."
+      });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -175,6 +215,14 @@ export default function SettingsPage() {
 
             <div className="pt-6 border-t border-zinc-800/50">
               <div className="flex items-center gap-2 mb-4">
+                <Cpu className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-medium text-zinc-400">Select AI Model</h3>
+              </div>
+              <ModelSelector provider={provider} value={model} onChange={setModel} />
+            </div>
+
+            <div className="pt-6 border-t border-zinc-800/50">
+              <div className="flex items-center gap-2 mb-4">
                 <Shield className="w-4 h-4 text-purple-400" />
                 <h3 className="text-sm font-medium text-zinc-400">Secure API Key</h3>
               </div>
@@ -186,13 +234,68 @@ export default function SettingsPage() {
                   placeholder="Enter your API key..."
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors"
                 />
-                {apiKey.endsWith("...") && (
+                {(apiKey.endsWith("...") || apiKey.includes("••••")) && (
                   <p className="text-[10px] text-zinc-500 mt-2 px-2 italic">
                     A key is already saved. Type a new one to replace it.
                   </p>
                 )}
               </div>
             </div>
+
+            <div className="pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-bold text-white">Test Provider & Model Connection</h4>
+                <p className="text-xs text-zinc-500">Send a quick test message to ensure key validity and server health.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={testing}
+                className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 text-zinc-200 hover:text-white font-semibold rounded-xl border border-zinc-700 transition-all text-sm shrink-0"
+              >
+                {testing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-zinc-400 border-t-white animate-spin rounded-full"></div>
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+                    Test Connection
+                  </>
+                )}
+              </button>
+            </div>
+
+            {testResult && (
+              <div className={`p-4 rounded-xl border text-sm animate-in fade-in slide-in-from-top-1 duration-200 ${
+                testResult.success 
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" 
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              }`}>
+                {testResult.success ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-bold text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      Connection Successful!
+                    </div>
+                    <p className="text-xs text-zinc-300">
+                      Model <span className="font-mono text-emerald-400 font-bold">[{testResult.modelUsed}]</span> responded: &quot;{testResult.message}&quot;
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-bold text-amber-400">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      Testing Diagnostic Warning
+                    </div>
+                    <p className="text-xs text-zinc-300">
+                      {testResult.error}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 

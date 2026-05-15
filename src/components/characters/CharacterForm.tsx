@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus, Key, Brain, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus, Key, Brain, ChevronDown, ChevronUp, Cpu } from "lucide-react";
 import ProviderSelector from "@/components/settings/ProviderSelector";
+import ModelSelector from "@/components/settings/ModelSelector";
 
 interface CharacterFormProps {
   initialData?: {
@@ -14,6 +15,7 @@ interface CharacterFormProps {
     greeting: string;
     avatarUrl?: string;
     provider?: string;
+    model?: string;
     apiKey?: string;
   };
   mode: "create" | "edit";
@@ -28,9 +30,10 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
     greeting: initialData?.greeting || "",
     avatarUrl: initialData?.avatarUrl || "",
     provider: initialData?.provider || "",
-    apiKey: initialData?.apiKey || "",
+    model: initialData?.model || "",
+    apiKey: initialData?.apiKey ? "••••••••••••••••••••••••••••••••" : "",
   });
-  const [showOverride, setShowOverride] = useState(!!initialData?.provider || !!initialData?.apiKey);
+  const [showOverride, setShowOverride] = useState(!!initialData?.provider || !!initialData?.model || !!initialData?.apiKey);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.avatarUrl || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -243,6 +246,17 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
               />
             </div>
 
+            <div className="space-y-4 pt-2 border-t border-zinc-800/50">
+              <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
+                <Cpu className="w-4 h-4 text-indigo-400" /> Override AI Model
+              </label>
+              <ModelSelector 
+                provider={formData.provider || "gemini"} 
+                value={formData.model} 
+                onChange={(val) => setFormData({ ...formData, model: val })} 
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
                 <Key className="w-4 h-4" /> Override API Key
@@ -254,7 +268,7 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
                 placeholder="Enter character-specific API key (optional)..."
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-zinc-100"
               />
-              {formData.apiKey.endsWith("...") && (
+              {(formData.apiKey.endsWith("...") || formData.apiKey.includes("••••")) && (
                 <p className="text-[10px] text-zinc-500 mt-1 ml-1 italic">
                   Note: An override key is already saved. Leave it to keep it, or clear it to use your global key.
                 </p>

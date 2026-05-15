@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Loader2, Bot } from "lucide-react";
+import { Loader2, Bot, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import Link from "next/link";
 import { useChat } from "@/hooks/useChat";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -26,6 +27,7 @@ export default function ChatPage() {
     setRollBackState,
     activeMenuId,
     setActiveMenuId,
+    chatError,
     messagesEndRef,
     handleSendMessage,
     handleDelete,
@@ -89,6 +91,39 @@ export default function ChatPage() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Inline Guidance Error Banner */}
+      {chatError && (
+        <div className="mx-6 mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 rounded-xl mt-0.5">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            </div>
+            <div className="flex-1 text-xs">
+              <h4 className="font-bold text-amber-400 text-sm mb-1">AI Communication Disruption</h4>
+              <p className="text-zinc-300 leading-relaxed mb-3">
+                {chatError.message}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/settings"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold transition-all border border-amber-500/30"
+                >
+                  <SettingsIcon className="w-3.5 h-3.5" /> Change Global Model
+                </Link>
+                {chat?.character && (
+                  <Link
+                    href={`/characters/manage/${chat.character.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-medium transition-all border border-zinc-800"
+                  >
+                    Edit Character Override
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MessageInput 
         inputValue={inputValue}

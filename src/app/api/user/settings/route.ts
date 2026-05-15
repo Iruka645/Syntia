@@ -19,6 +19,7 @@ export async function GET() {
         name: true,
         username: true,
         defaultProvider: true,
+        defaultModel: true,
         apiKey: true,
       },
     });
@@ -27,13 +28,14 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Mask API key for security
-    const maskedKey = user.apiKey ? `${user.apiKey.substring(0, 10)}...` : "";
+    // Mask API key for security visually filled like a standard password box
+    const maskedKey = user.apiKey ? "••••••••••••••••••••••••••••••••" : "";
 
     return NextResponse.json({
       name: user.name,
       username: user.username,
       defaultProvider: user.defaultProvider || "gemini",
+      defaultModel: user.defaultModel || "",
       apiKey: maskedKey,
       hasKey: !!user.apiKey,
     });
@@ -52,7 +54,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, username, password, defaultProvider, apiKey } = body;
+    const { name, username, password, defaultProvider, defaultModel, apiKey } = body;
 
     const userId = parseInt((session.user as any).id);
     const updateData: any = {};
@@ -75,9 +77,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (defaultProvider) updateData.defaultProvider = defaultProvider;
+    if (defaultModel !== undefined) updateData.defaultModel = defaultModel || null;
     
     // Only update API key if it's provided and not the masked version
-    if (apiKey && !apiKey.endsWith("...")) {
+    if (apiKey && !apiKey.endsWith("...") && !apiKey.includes("••••")) {
       updateData.apiKey = encrypt(apiKey);
     } else if (apiKey === "") {
       // Allow clearing the key

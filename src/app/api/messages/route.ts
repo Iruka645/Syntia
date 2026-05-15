@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { defaultProvider: true, apiKey: true }
+      select: { defaultProvider: true, defaultModel: true, apiKey: true }
     });
 
     // Determine Provider and Key with layered priority
@@ -129,11 +129,20 @@ export async function POST(req: Request) {
       finalSystemPrompt = `USER IDENTITY ARCHIVE:\n${chat.archive.content}\n\n${finalSystemPrompt}`;
     }
 
+    // Resolve Model Name with layered priority
+    let modelName = (chat.character.model as string) || (user?.defaultModel as string) || "";
+    if (!modelName) {
+      if (provider === "gemini") modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      else if (provider === "openai") modelName = "gpt-4o";
+      else if (provider === "claude") modelName = "claude-3-5-sonnet-20241022";
+      else if (provider === "grok") modelName = "grok-2-latest";
+    }
+
     // 4. Get AI Response
     const aiResponseText = await getChatResponse(
       provider,
       apiKey,
-      provider === "gemini" ? process.env.GEMINI_MODEL || "" : "", // Model override can be added later
+      modelName,
       finalSystemPrompt,
       history,
       content
@@ -160,8 +169,25 @@ export async function POST(req: Request) {
       userMessage,
       aiMessage,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in message route:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    const errStr = error?.toString() || "";
+    let userAdvice = "An unknown error occurred while communicating with the AI provider.";
+
+    if (errStr.includes("503") || errStr.toLowerCase().includes("high demand") || errStr.toLowerCase().includes("overloaded") || errStr.toLowerCase().includes("service unavailable")) {
+      userAdvice = `Model is currently experiencing high demand/heavy load. Please try selecting a different model in Settings or try again later.`;
+    } else if (errStr.includes("401") || errStr.toLowerCase().includes("unauthorized") || errStr.toLowerCase().includes("invalid api key") || errStr.toLowerCase().includes("api_key_invalid")) {
+      userAdvice = `API Key appears to be invalid or unauthorized. Please verify your credentials.`;
+    } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found") || errStr.toLowerCase().includes("does not exist")) {
+      userAdvice = `Model was not found or is not supported by your API key/tier. Please verify the model name.`;
+    } else {
+      userAdvice = `Provider error: ${error?.message || errStr}`;
+    }
+
+    return NextResponse.json({ 
+      error: true, 
+      message: userAdvice,
+      rawError: errStr 
+    }, { status: 500 });
   }
 }

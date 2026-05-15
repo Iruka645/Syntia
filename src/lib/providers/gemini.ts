@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, Content } from "@google/generative-ai";
 
 export async function getGeminiResponse(
   apiKey: string,
@@ -37,7 +37,7 @@ export async function getGeminiResponse(
     }));
 
     const chat = model.startChat({
-      history: geminiHistory as any,
+      history: geminiHistory as Content[],
     });
 
     const result = await chat.sendMessage(userMessage);

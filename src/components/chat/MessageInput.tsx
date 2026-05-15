@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { Loader2, Send } from "lucide-react";
 
 interface MessageInputProps {
@@ -13,31 +14,38 @@ export function MessageInput({
   inputValue,
   setInputValue,
   isSending,
-  handleSendMessage
+  handleSendMessage,
 }: MessageInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  }, [inputValue]);
+
   return (
     <div className="p-6 bg-zinc-950 border-t border-zinc-900">
       <div className="max-w-4xl mx-auto relative flex items-end gap-3">
         <div className="relative flex-1">
-          <textarea 
+          <textarea
+            ref={textareaRef}
             value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              // Auto-resize logic
-              e.target.style.height = 'inherit';
-              e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
-            }}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your message... (Enter for new line)"
             rows={1}
             className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-5 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-zinc-600 resize-none min-h-[56px] max-h-[200px] overflow-y-auto"
           />
           <div className="absolute right-3 bottom-3 flex items-center gap-2">
-            <button 
+            <button
+              aria-label="Send message"
               onClick={() => handleSendMessage()}
               disabled={!inputValue.trim() || isSending}
               className={`p-2 rounded-xl transition-all ${
-                inputValue.trim() && !isSending 
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 active:scale-90" 
+                inputValue.trim() && !isSending
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 active:scale-90"
                   : "text-zinc-600 bg-zinc-800 cursor-not-allowed"
               }`}
             >

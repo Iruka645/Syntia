@@ -1,17 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation"; // Wait, in next.js 13+ it is next/navigation
 import { User, Lock, ArrowRight, Bot, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
+  const { status } = useSession();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/characters");
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-950 relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-600/20 blur-[120px] pointer-events-none" />
+        
+        <div className="w-full max-w-md p-8 relative z-10 flex flex-col items-center">
+          <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+            {/* Spinning glowing border */}
+            <div className="absolute inset-0 rounded-2xl border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+            <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <Bot className="w-7 h-7 text-white animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight mb-2">Authenticating</h2>
+          <p className="text-zinc-400 text-sm text-center max-w-xs">
+            Verifying your secure token session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

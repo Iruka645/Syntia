@@ -31,7 +31,7 @@ export async function PATCH(
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl, provider, apiKey } = await req.json();
+    const { name, description, systemPrompt, greeting, avatarUrl, provider, model, apiKey } = await req.json();
 
     const updateData: any = {
       name,
@@ -40,9 +40,10 @@ export async function PATCH(
       greeting,
       avatarUrl,
       provider: provider || null,
+      model: model || null,
     };
 
-    if (apiKey && !apiKey.endsWith("...")) {
+    if (apiKey && !apiKey.endsWith("...") && !apiKey.includes("••••")) {
       updateData.apiKey = encrypt(apiKey);
     } else if (apiKey === "") {
       updateData.apiKey = null;

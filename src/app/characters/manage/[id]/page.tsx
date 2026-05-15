@@ -4,10 +4,11 @@ import { useEffect, useState, use } from "react";
 import CharacterFormComp from "@/components/characters/CharacterForm";
 import { Settings, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { Character } from "@/types";
 
 export default function EditCharacterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [character, setCharacter] = useState<any | null>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -73,10 +74,10 @@ export default function EditCharacterPage({ params }: { params: Promise<{ id: st
             description: character.description || "",
             systemPrompt: character.systemPrompt,
             greeting: character.greeting,
-            avatarUrl: (character as any).avatarUrl,
-            provider: (character as any).provider,
-            model: (character as any).model,
-            apiKey: (character as any).apiKey
+            avatarUrl: character.avatarUrl,
+            provider: character.provider,
+            model: character.model,
+            apiKey: character.apiKey
           }} />
         </div>
       </div>

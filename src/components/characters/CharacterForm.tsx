@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus, Key, Brain, ChevronDown, ChevronUp, Cpu } from "lucide-react";
 import ProviderSelector from "@/components/settings/ProviderSelector";
 import ModelSelector from "@/components/settings/ModelSelector";
+import Image from "next/image";
 
 interface CharacterFormProps {
   initialData?: {
@@ -88,8 +89,8 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
         const data = await res.json();
         throw new Error(data.message || "Something went wrong");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -109,8 +110,8 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
       } else {
         throw new Error("Failed to delete character");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
       setIsSubmitting(false);
     }
   };
@@ -130,7 +131,7 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
           className="relative w-32 h-32 rounded-3xl bg-zinc-900 border-2 border-dashed border-zinc-800 hover:border-indigo-500 transition-all cursor-pointer overflow-hidden group"
         >
           {previewUrl ? (
-            <img src={previewUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
+            <Image src={previewUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 group-hover:text-indigo-400 transition-colors">
               <Plus className="w-8 h-8 mb-1" />

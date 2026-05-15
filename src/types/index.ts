@@ -1,3 +1,5 @@
+
+
 export interface Character {
   id: number;
   name: string;
@@ -5,6 +7,8 @@ export interface Character {
   greeting: string;
   avatarUrl?: string;
   provider?: string;
+  model?: string;
+  systemPrompt: string;
   apiKey?: string;
 }
 
@@ -27,4 +31,20 @@ export interface Chat {
   character: Character;
   archiveId?: number | null;
   archive?: UserArchive | null;
+}
+
+export interface SessionUser {
+  id: string;
+  name?: string | null;
+  username?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
+
+export interface ApiResponse<T = JsonValue> {
+  data?: T;
+  message?: string;
+  error?: string;
 }

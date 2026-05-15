@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getChatResponse, AIProvider } from "@/lib/ai-provider";
 import { decrypt } from "@/lib/encryption";
+import { SessionUser } from "@/types";
 
 export async function GET(req: Request) {
   try {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     const { chatId, content, isReroll, oldAiMessageId } = await req.json();
 
     if (!chatId || !content) {
@@ -169,10 +170,12 @@ export async function POST(req: Request) {
       userMessage,
       aiMessage,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in message route:", error);
-    const errStr = error?.toString() || "";
+    const errStr = String(error);
     let userAdvice = "An unknown error occurred while communicating with the AI provider.";
+
+    const message = error instanceof Error ? error.message : errStr;
 
     if (errStr.includes("503") || errStr.toLowerCase().includes("high demand") || errStr.toLowerCase().includes("overloaded") || errStr.toLowerCase().includes("service unavailable")) {
       userAdvice = `Model is currently experiencing high demand/heavy load. Please try selecting a different model in Settings or try again later.`;
@@ -181,7 +184,7 @@ export async function POST(req: Request) {
     } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found") || errStr.toLowerCase().includes("does not exist")) {
       userAdvice = `Model was not found or is not supported by your API key/tier. Please verify the model name.`;
     } else {
-      userAdvice = `Provider error: ${error?.message || errStr}`;
+      userAdvice = `Provider error: ${message}`;
     }
 
     return NextResponse.json({ 

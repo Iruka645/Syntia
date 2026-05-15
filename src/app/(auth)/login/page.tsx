@@ -64,7 +64,7 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      setError(`An unexpected error occurred. Detailed error: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +144,7 @@ export default function LoginPage() {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-zinc-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
                 Create one now
               </Link>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { SessionUser } from "@/types";
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
     const archive = await prisma.userArchive.findFirst({
       where: {
         id: parseInt(paramId),
-        userId: parseInt((session.user as any).id),
+        userId: parseInt((session.user as SessionUser).id),
       },
     });
 
@@ -46,7 +47,7 @@ export async function PATCH(
   try {
     const body = await req.json();
     const { name, content, isDefault } = body;
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     const { id: paramId } = await params;
     const archiveId = parseInt(paramId);
 
@@ -94,7 +95,7 @@ export async function DELETE(
   }
 
   try {
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     const { id: paramId } = await params;
     const archiveId = parseInt(paramId);
 

@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { getChatResponse, AIProvider } from "@/lib/ai-provider";
+import { SessionUser } from "@/types";
 
 export async function POST(req: Request) {
   let providerStr = "ai provider";
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Provider is required" }, { status: 400 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     let resolvedApiKey = "";
 
     // If client provides a new key directly, use it
@@ -87,11 +88,13 @@ export async function POST(req: Request) {
       modelUsed: resolvedModelName
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Test Model Error details:", error);
     
-    const errStr = error?.toString() || "";
+    const errStr = String(error);
     let userAdvice = "An unknown error occurred while communicating with the AI provider.";
+
+    const message = error instanceof Error ? error.message : errStr;
 
     if (errStr.includes("503") || errStr.toLowerCase().includes("high demand") || errStr.toLowerCase().includes("overloaded") || errStr.toLowerCase().includes("service unavailable")) {
       userAdvice = `Model '${modelStr || providerStr}' is currently experiencing high demand/heavy load. Please try selecting a different model or try again later.`;
@@ -100,7 +103,7 @@ export async function POST(req: Request) {
     } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found") || errStr.toLowerCase().includes("does not exist")) {
       userAdvice = `Model '${modelStr}' was not found or is not supported by your API key/tier. Please check the model name.`;
     } else {
-      userAdvice = `Provider error: ${error?.message || errStr}`;
+      userAdvice = `Provider error: ${message}`;
     }
 
     return NextResponse.json({

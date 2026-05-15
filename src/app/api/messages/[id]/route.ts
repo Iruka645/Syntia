@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { SessionUser } from "@/types";
 
 export async function PATCH(
   req: Request,
@@ -27,7 +28,7 @@ export async function PATCH(
       return NextResponse.json({ message: "Message not found" }, { status: 404 });
     }
 
-    if (message.chat.userId !== parseInt((session.user as any).id)) {
+    if (message.chat.userId !== parseInt((session.user as SessionUser).id)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
@@ -66,7 +67,7 @@ export async function DELETE(
       return NextResponse.json({ message: "Message not found" }, { status: 404 });
     }
 
-    if (message.chat.userId !== parseInt((session.user as any).id)) {
+    if (message.chat.userId !== parseInt((session.user as SessionUser).id)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 

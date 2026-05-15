@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState} from "react";
 import { X, Save, ScrollText } from "lucide-react";
 
 interface Archive {
@@ -52,7 +52,7 @@ export default function ArchiveModal({ archive, onClose, onSaved }: ArchiveModal
         setError(data.error || "Failed to save archive.");
       }
     } catch (error) {
-      setError("An error occurred while saving.");
+      setError(`An error occurred while saving. Detailed error: ${error}`);
     } finally {
       setSaving(false);
     }
@@ -106,7 +106,7 @@ export default function ArchiveModal({ archive, onClose, onSaved }: ArchiveModal
                 required
               />
               <p className="mt-2 text-xs text-zinc-500 italic">
-                This content will be added to the AI's system prompt to give it context about who it is talking to.
+                This content will be added to the AI system prompt to give it context about who it is talking to.
               </p>
             </div>
 

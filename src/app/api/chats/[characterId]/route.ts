@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { SessionUser } from "@/types";
 
 export async function GET(
   req: Request,
@@ -14,7 +15,7 @@ export async function GET(
     }
 
     const { characterId: charIdStr } = await params;
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     const characterId = parseInt(charIdStr);
 
     // Find or create chat
@@ -66,7 +67,7 @@ export async function PATCH(
     }
 
     const { characterId: charIdStr } = await params;
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
     const characterId = parseInt(charIdStr);
     const { archiveId } = await req.json();
 

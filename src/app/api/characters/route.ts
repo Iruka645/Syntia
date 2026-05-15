@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { encrypt } from "@/lib/encryption";
+import { SessionUser } from "@/types";
 
 export async function GET() {
   try {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
         provider: provider || null,
         model: model || null,
         apiKey: apiKey ? encrypt(apiKey) : null,
-        createdBy: parseInt((session.user as any).id),
+        createdBy: parseInt((session.user as SessionUser).id),
       },
     });
 

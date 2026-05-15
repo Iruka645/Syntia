@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, MoreVertical } from "lucide-react";
 import { Chat } from "@/types";
 import ArchiveSelector from "./ArchiveSelector";
+import Image from "next/image";
 
 interface ChatHeaderProps {
   chat: Chat | null;
@@ -20,7 +21,7 @@ export function ChatHeader({ chat, onUpdateArchive }: ChatHeaderProps) {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 overflow-hidden">
             {chat?.character.avatarUrl ? (
-              <img src={chat.character.avatarUrl} alt={chat.character.name} className="w-full h-full object-cover" />
+              <Image src={chat.character.avatarUrl} alt={chat.character.name} className="w-full h-full object-cover" />
             ) : (
               <Bot className="w-6 h-6 text-indigo-400" />
             )}

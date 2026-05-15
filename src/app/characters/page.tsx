@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { User, MessageCircle, Plus, LogOut, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { SessionUser } from "@/types";
+import Image from "next/image";
 
 interface Character {
   id: number;
@@ -125,7 +127,7 @@ export default function CharacterSelection() {
               {/* Card Header (Avatar) */}
               <div className="h-48 bg-zinc-800 relative overflow-hidden">
                 {char.avatarUrl ? (
-                  <img 
+                  <Image 
                     src={char.avatarUrl} 
                     alt={char.name} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -154,7 +156,7 @@ export default function CharacterSelection() {
                 </p>
                 <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
                   <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Active Now</span>
-                  {(session?.user as any)?.id === char.createdBy.toString() && (
+                  {(session?.user as SessionUser)?.id === char.createdBy.toString() && (
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();

@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
 import bcrypt from "bcryptjs";
+import { SessionUser } from "@/types";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -14,7 +15,7 @@ export async function GET() {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: parseInt((session.user as any).id) },
+      where: { id: parseInt((session.user as SessionUser).id) },
       select: {
         name: true,
         username: true,
@@ -56,8 +57,15 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { name, username, password, defaultProvider, defaultModel, apiKey } = body;
 
-    const userId = parseInt((session.user as any).id);
-    const updateData: any = {};
+    const userId = parseInt((session.user as SessionUser).id);
+    const updateData: {
+      name?: string;
+      username?: string;
+      password?: string;
+      defaultProvider?: string;
+      defaultModel?: string | null;
+      apiKey?: string | null;
+    } = {};
     
     if (name) updateData.name = name;
     

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ScrollText, ChevronDown, Check, UserCircle } from "lucide-react";
+import { ScrollText, ChevronDown, Check, UserCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { UserArchive } from "@/types";
 
 interface ArchiveSelectorProps {
@@ -14,19 +15,6 @@ export default function ArchiveSelector({ currentArchiveId, onSelect }: ArchiveS
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetchArchives();
-    
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const fetchArchives = async () => {
     try {
       const res = await fetch("/api/user/archives");
@@ -40,6 +28,23 @@ export default function ArchiveSelector({ currentArchiveId, onSelect }: ArchiveS
       setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    const loadArchives = async () => {
+      await fetchArchives();
+    }
+    loadArchives();
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  
 
   const currentArchive = archives.find(a => a.id === currentArchiveId);
 
@@ -49,9 +54,13 @@ export default function ArchiveSelector({ currentArchiveId, onSelect }: ArchiveS
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-full text-xs font-medium text-zinc-300 transition-all"
       >
-        <ScrollText className="w-3.5 h-3.5 text-amber-400" />
+        {loading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />
+        ) : (
+          <ScrollText className="w-3.5 h-3.5 text-amber-400" />
+        )}
         <span className="truncate max-w-[100px]">
-          {currentArchive ? currentArchive.name : "No Archive"}
+          {loading ? "Loading..." : (currentArchive ? currentArchive.name : "No Archive")}
         </span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
@@ -62,43 +71,52 @@ export default function ArchiveSelector({ currentArchiveId, onSelect }: ArchiveS
             <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Select Persona</h4>
           </div>
           <div className="max-h-64 overflow-y-auto p-1">
-            <button
-              onClick={() => {
-                onSelect(null);
-                setIsOpen(false);
-              }}
-              className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-800 text-left transition-colors group"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-zinc-800 rounded-md group-hover:bg-zinc-700">
-                  <UserCircle className="w-4 h-4 text-zinc-400" />
-                </div>
-                <span className="text-sm text-zinc-300 font-medium">None (Global Default)</span>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500">
+                <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                <span className="text-[10px] font-medium uppercase tracking-widest">Loading...</span>
               </div>
-              {!currentArchiveId && <Check className="w-4 h-4 text-blue-500" />}
-            </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    onSelect(null);
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-800 text-left transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-zinc-800 rounded-md group-hover:bg-zinc-700">
+                      <UserCircle className="w-4 h-4 text-zinc-400" />
+                    </div>
+                    <span className="text-sm text-zinc-300 font-medium">None (Global Default)</span>
+                  </div>
+                  {!currentArchiveId && <Check className="w-4 h-4 text-blue-500" />}
+                </button>
 
-            {archives.map((archive) => (
-              <button
-                key={archive.id}
-                onClick={() => {
-                  onSelect(archive.id);
-                  setIsOpen(false);
-                }}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-800 text-left transition-colors group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-amber-500/10 rounded-md group-hover:bg-amber-500/20">
-                    <ScrollText className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm text-zinc-100 font-medium">{archive.name}</span>
-                    <span className="text-[10px] text-zinc-500 line-clamp-1">{archive.content}</span>
-                  </div>
-                </div>
-                {currentArchiveId === archive.id && <Check className="w-4 h-4 text-blue-500" />}
-              </button>
-            ))}
+                {archives.map((archive) => (
+                  <button
+                    key={archive.id}
+                    onClick={() => {
+                      onSelect(archive.id);
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-800 text-left transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-500/10 rounded-md group-hover:bg-amber-500/20">
+                        <ScrollText className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-zinc-100 font-medium">{archive.name}</span>
+                        <span className="text-[10px] text-zinc-500 line-clamp-1">{archive.content}</span>
+                      </div>
+                    </div>
+                    {currentArchiveId === archive.id && <Check className="w-4 h-4 text-blue-500" />}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
           <div className="p-2 border-t border-zinc-800 bg-zinc-900/30">
             <Link 
@@ -114,4 +132,3 @@ export default function ArchiveSelector({ currentArchiveId, onSelect }: ArchiveS
   );
 }
 
-import Link from "next/link";

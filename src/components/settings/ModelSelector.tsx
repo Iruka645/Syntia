@@ -31,31 +31,36 @@ const providerModels: Record<string, { id: string; name: string; isLatest?: bool
 
 export default function ModelSelector({ provider, value, onChange }: ModelSelectorProps) {
   const models = providerModels[provider] || providerModels.gemini;
-  
-  // Check if current value is standard or custom
   const isPreset = models.some(m => m.id === value);
-  const [isCustom, setIsCustom] = useState(!isPreset && value !== "");
+
+  const [prevProvider, setPrevProvider] = useState(provider);
+  const [isCustomMode, setIsCustomMode] = useState(!isPreset && value !== "");
   const [customValue, setCustomValue] = useState(isPreset ? "" : value);
 
-  // If provider changes, reset selection gracefully to standard latest default if current value is empty or preset
+  // Sync internal state when provider changes during render (React 18+ pattern)
+  if (provider !== prevProvider) {
+    setPrevProvider(provider);
+    setIsCustomMode(false);
+  }
+
+  // If provider changes or value becomes invalid for new provider, update parent via effect
   useEffect(() => {
     const isCurrentValueInNewModels = models.some(m => m.id === value);
-    if (!value || (!isCustom && !isCurrentValueInNewModels)) {
+    if (!value || (!isCustomMode && !isCurrentValueInNewModels)) {
       const defaultLatest = models.find(m => m.isLatest)?.id || models[0]?.id;
       if (defaultLatest && defaultLatest !== value) {
         onChange(defaultLatest);
-        setIsCustom(false);
       }
     }
-  }, [provider, models, value, isCustom, onChange]);
+  }, [provider, models, value, isCustomMode, onChange]);
 
   const handleCustomToggle = () => {
-    setIsCustom(true);
+    setIsCustomMode(true);
     onChange(customValue);
   };
 
   const handlePresetSelect = (id: string) => {
-    setIsCustom(false);
+    setIsCustomMode(false);
     onChange(id);
   };
 
@@ -64,11 +69,13 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
     onChange(e.target.value);
   };
 
+  const isCustomActive = isCustomMode || (!isPreset && value !== "");
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {models.map((m) => {
-          const selected = !isCustom && value === m.id;
+          const selected = !isCustomActive && value === m.id;
           return (
             <label
               key={m.id}
@@ -104,7 +111,7 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
           onClick={handleCustomToggle}
           className={`
             relative flex cursor-pointer items-center justify-between rounded-xl border bg-zinc-950/60 p-4 shadow-sm backdrop-blur-sm focus:outline-none
-            ${isCustom ? "border-purple-500 bg-purple-500/5 ring-1 ring-purple-500" : "border-zinc-800/80"}
+            ${isCustomActive ? "border-purple-500 bg-purple-500/5 ring-1 ring-purple-500" : "border-zinc-800/80"}
             hover:border-zinc-700 transition-all
           `}
         >
@@ -116,13 +123,13 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
               Type custom model string
             </span>
           </div>
-          {isCustom && (
+          {isCustomActive && (
             <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
           )}
         </label>
       </div>
 
-      {isCustom && (
+      {isCustomActive && (
         <div className="animate-in fade-in slide-in-from-top-1 duration-200 pt-2">
           <input
             type="text"

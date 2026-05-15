@@ -11,6 +11,7 @@ import {
   X as CloseIcon 
 } from "lucide-react";
 import { Message, Chat } from "@/types";
+import Image from "next/image";
 
 interface MessageBubbleProps {
   msg: Message;
@@ -56,7 +57,7 @@ export function MessageBubble({
         {msg.role === "assistant" && (
           <div className="w-8 h-8 shrink-0 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
             {chat?.character.avatarUrl ? (
-              <img src={chat.character.avatarUrl} alt={chat.character.name} className="w-full h-full object-cover" />
+              <Image src={chat.character.avatarUrl} alt={chat.character.name} className="w-full h-full object-cover" />
             ) : (
               <Bot className="w-4 h-4 text-indigo-500" />
             )}

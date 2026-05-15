@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { SessionUser } from "@/types";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -12,7 +13,7 @@ export async function GET() {
 
   try {
     const archives = await prisma.userArchive.findMany({
-      where: { userId: parseInt((session.user as any).id) },
+      where: { userId: parseInt((session.user as SessionUser).id) },
       orderBy: { createdAt: "desc" },
     });
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name and content are required" }, { status: 400 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
 
     // If setting as default, unset other defaults
     if (isDefault) {

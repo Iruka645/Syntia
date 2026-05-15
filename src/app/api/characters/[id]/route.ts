@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { encrypt } from "@/lib/encryption";
+import { SessionUser } from "@/types";
 
 export async function PATCH(
   req: Request,
@@ -16,7 +17,7 @@ export async function PATCH(
 
     const { id: charIdStr } = await params;
     const id = parseInt(charIdStr);
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
 
     // Check ownership
     const character = await prisma.character.findUnique({
@@ -33,7 +34,16 @@ export async function PATCH(
 
     const { name, description, systemPrompt, greeting, avatarUrl, provider, model, apiKey } = await req.json();
 
-    const updateData: any = {
+    const updateData: {
+      name: string;
+      description: string;
+      systemPrompt: string;
+      greeting: string;
+      avatarUrl: string;
+      provider: string | null;
+      model: string | null;
+      apiKey?: string | null;
+    } = {
       name,
       description,
       systemPrompt,
@@ -73,7 +83,7 @@ export async function DELETE(
 
     const { id: charIdStr } = await params;
     const id = parseInt(charIdStr);
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt((session.user as SessionUser).id);
 
     // Check ownership
     const character = await prisma.character.findUnique({

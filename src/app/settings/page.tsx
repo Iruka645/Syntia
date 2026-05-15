@@ -6,7 +6,7 @@ import ProviderSelector from "@/components/settings/ProviderSelector";
 import ModelSelector from "@/components/settings/ModelSelector";
 import ArchiveList from "@/components/settings/ArchiveList";
 import { 
-  Save, Key, Brain, CheckCircle2, AlertCircle, 
+  Save,Brain, CheckCircle2, AlertCircle, 
   ArrowLeft, User as UserIcon, Shield, ScrollText, Cpu, Play
 } from "lucide-react";
 
@@ -30,7 +30,10 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string; modelUsed?: string } | null>(null);
 
   useEffect(() => {
-    fetchSettings();
+    const loadSettings = async()=>{
+      
+    }
+    loadSettings();
   }, []);
 
   const fetchSettings = async () => {
@@ -77,7 +80,7 @@ export default function SettingsPage() {
         setMessage({ type: "error", text: data.error || "Failed to save settings." });
       }
     } catch (error) {
-      setMessage({ type: "error", text: "An error occurred while saving." });
+      setMessage({ type: "error", text: `An error occurred while saving. Detail: ${JSON.stringify(error)}` });
     } finally {
       setSaving(false);
     }
@@ -105,7 +108,8 @@ export default function SettingsPage() {
           error: data.error || "Testing failed. Model may be unavailable."
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      console.error("Test Error:", err);
       setTestResult({
         success: false,
         error: "Network error while connecting to test endpoint."

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { User, Edit2, Trash2, Star, Plus, ScrollText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Edit2, Trash2, Star, Plus, ScrollText } from "lucide-react";
 import ArchiveModal from "./ArchiveModal";
 
 interface Archive {
@@ -17,10 +17,6 @@ export default function ArchiveList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArchive, setEditingArchive] = useState<Archive | null>(null);
 
-  useEffect(() => {
-    fetchArchives();
-  }, []);
-
   const fetchArchives = async () => {
     try {
       const res = await fetch("/api/user/archives");
@@ -34,6 +30,13 @@ export default function ArchiveList() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadArchives = async () => {
+      await fetchArchives();
+    }
+    loadArchives();
+  }, []);
 
   const handleSetDefault = async (id: number) => {
     try {

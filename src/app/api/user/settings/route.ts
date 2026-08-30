@@ -22,6 +22,7 @@ export async function GET() {
         defaultProvider: true,
         defaultModel: true,
         apiKey: true,
+        baseUrl: true,
       },
     });
 
@@ -39,6 +40,7 @@ export async function GET() {
       defaultModel: user.defaultModel || "",
       apiKey: maskedKey,
       hasKey: !!user.apiKey,
+      baseUrl: user.baseUrl || "",
     });
   } catch (error) {
     console.error("GET User Settings Error:", error);
@@ -55,9 +57,13 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, username, password, defaultProvider, defaultModel, apiKey } = body;
+    const { name, username, password, defaultProvider, defaultModel, apiKey, baseUrl } = body;
 
     const userId = parseInt((session.user as SessionUser).id);
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { defaultProvider: true },
+    });
     const updateData: {
       name?: string;
       username?: string;
@@ -65,10 +71,11 @@ export async function PATCH(req: NextRequest) {
       defaultProvider?: string;
       defaultModel?: string | null;
       apiKey?: string | null;
+      baseUrl?: string | null;
     } = {};
-    
+
     if (name) updateData.name = name;
-    
+
     if (username) {
       // Check if username is already taken by another user
       const existing = await prisma.user.findFirst({
@@ -86,10 +93,18 @@ export async function PATCH(req: NextRequest) {
 
     if (defaultProvider) updateData.defaultProvider = defaultProvider;
     if (defaultModel !== undefined) updateData.defaultModel = defaultModel || null;
-    
+    if (baseUrl !== undefined) updateData.baseUrl = baseUrl.trim() || null;
+
     // Only update API key if it's provided and not the masked version
     if (apiKey && !apiKey.endsWith("...") && !apiKey.includes("••••")) {
       updateData.apiKey = encrypt(apiKey);
+    } else if (
+      defaultProvider &&
+      currentUser?.defaultProvider &&
+      defaultProvider !== currentUser.defaultProvider
+    ) {
+      // A single key belongs to the selected provider; never carry it to another provider.
+      updateData.apiKey = null;
     } else if (apiKey === "") {
       // Allow clearing the key
       updateData.apiKey = null;

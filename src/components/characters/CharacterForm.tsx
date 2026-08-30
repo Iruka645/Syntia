@@ -2,10 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, X, Loader2, Sparkles, MessageSquare, Info, Terminal, Plus, Key, Brain, ChevronDown, ChevronUp, Cpu } from "lucide-react";
+import {
+  Save,
+  X,
+  Loader2,
+  Sparkles,
+  MessageSquare,
+  Info,
+  Terminal,
+  Plus,
+  Key,
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+} from "lucide-react";
 import ProviderSelector from "@/components/settings/ProviderSelector";
 import ModelSelector from "@/components/settings/ModelSelector";
-import Image from "next/image";
+import { AvatarImage } from "@/components/AvatarImage";
 
 interface CharacterFormProps {
   initialData?: {
@@ -18,6 +32,7 @@ interface CharacterFormProps {
     provider?: string;
     model?: string;
     apiKey?: string;
+    baseUrl?: string;
   };
   mode: "create" | "edit";
 }
@@ -33,8 +48,14 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
     provider: initialData?.provider || "",
     model: initialData?.model || "",
     apiKey: initialData?.apiKey ? "••••••••••••••••••••••••••••••••" : "",
+    baseUrl: initialData?.baseUrl || "",
   });
-  const [showOverride, setShowOverride] = useState(!!initialData?.provider || !!initialData?.model || !!initialData?.apiKey);
+  const [showOverride, setShowOverride] = useState(
+    !!initialData?.provider ||
+      !!initialData?.model ||
+      !!initialData?.apiKey ||
+      !!initialData?.baseUrl
+  );
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.avatarUrl || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,7 +119,7 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
 
   const deleteCharacter = async () => {
     if (!initialData?.id || !confirm("Are you sure you want to delete this character?")) return;
-    
+
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/characters/${initialData.id}`, {
@@ -126,29 +147,27 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
 
       {/* Avatar Upload Section */}
       <div className="flex flex-col items-center gap-4 py-4">
-        <div 
+        <div
           onClick={() => document.getElementById("avatar-upload")?.click()}
           className="relative w-32 h-32 rounded-3xl bg-zinc-900 border-2 border-dashed border-zinc-800 hover:border-indigo-500 transition-all cursor-pointer overflow-hidden group"
         >
-          {previewUrl ? (
-            <Image src={previewUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
-          ) : (
+          <AvatarImage src={previewUrl} alt="Avatar Preview" sizes="128px" className="object-cover">
             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 group-hover:text-indigo-400 transition-colors">
               <Plus className="w-8 h-8 mb-1" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Upload Photo</span>
             </div>
-          )}
+          </AvatarImage>
           {previewUrl && (
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <span className="text-xs text-white font-bold">Change Photo</span>
             </div>
           )}
         </div>
-        <input 
+        <input
           id="avatar-upload"
-          type="file" 
-          accept="image/*" 
-          className="hidden" 
+          type="file"
+          accept="image/*"
+          className="hidden"
           onChange={handleFileChange}
         />
         <p className="text-xs text-zinc-500">Recommended: Square image, 512x512px</p>
@@ -230,20 +249,28 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
           <div className="flex items-center gap-3">
             <Brain className="w-5 h-5 text-indigo-400" />
             <div className="text-left">
-              <h3 className="font-bold text-white group-hover:text-indigo-400 transition-colors">AI Provider Override</h3>
-              <p className="text-xs text-zinc-500">Optional: Use a specific AI model or API key for this character only</p>
+              <h3 className="font-bold text-white group-hover:text-indigo-400 transition-colors">
+                AI Provider Override
+              </h3>
+              <p className="text-xs text-zinc-500">
+                Optional: Use a specific AI model or API key for this character only
+              </p>
             </div>
           </div>
-          {showOverride ? <ChevronUp className="w-5 h-5 text-zinc-500" /> : <ChevronDown className="w-5 h-5 text-zinc-500" />}
+          {showOverride ? (
+            <ChevronUp className="w-5 h-5 text-zinc-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-zinc-500" />
+          )}
         </button>
 
         {showOverride && (
           <div className="mt-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="space-y-4">
               <label className="text-sm font-medium text-zinc-400 ml-1">Select Provider</label>
-              <ProviderSelector 
-                value={formData.provider || "gemini"} 
-                onChange={(val) => setFormData({ ...formData, provider: val })} 
+              <ProviderSelector
+                value={formData.provider || "gemini"}
+                onChange={(val) => setFormData({ ...formData, provider: val })}
               />
             </div>
 
@@ -251,16 +278,31 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
               <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
                 <Cpu className="w-4 h-4 text-indigo-400" /> Override AI Model
               </label>
-              <ModelSelector 
-                provider={formData.provider || "gemini"} 
-                value={formData.model} 
-                onChange={(val) => setFormData({ ...formData, model: val })} 
+              <ModelSelector
+                provider={formData.provider || "gemini"}
+                value={formData.model}
+                onChange={(val) => setFormData({ ...formData, model: val })}
               />
             </div>
 
             <div className="space-y-2">
+              {formData.provider === "local" && (
+                <div className="space-y-2 mb-8">
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
+                    <Terminal className="w-4 h-4" /> Override Unsloth API Endpoint
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.baseUrl}
+                    onChange={(event) => setFormData({ ...formData, baseUrl: event.target.value })}
+                    placeholder="Leave blank to use the global local-provider endpoint"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all text-zinc-100 font-mono text-sm"
+                  />
+                </div>
+              )}
               <label className="flex items-center gap-2 text-sm font-medium text-zinc-400 ml-1">
                 <Key className="w-4 h-4" /> Override API Key
+                {formData.provider === "local" ? " (optional)" : ""}
               </label>
               <input
                 type="password"
@@ -271,7 +313,8 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
               />
               {(formData.apiKey.endsWith("...") || formData.apiKey.includes("••••")) && (
                 <p className="text-[10px] text-zinc-500 mt-1 ml-1 italic">
-                  Note: An override key is already saved. Leave it to keep it, or clear it to use your global key.
+                  Note: An override key is already saved. Leave it to keep it, or clear it to use
+                  your global key.
                 </p>
               )}
             </div>
@@ -311,7 +354,9 @@ export default function CharacterForm({ initialData, mode }: CharacterFormProps)
             ) : (
               <Save className="w-5 h-5" />
             )}
-            <span className="font-bold">{mode === "create" ? "Create Character" : "Save Changes"}</span>
+            <span className="font-bold">
+              {mode === "create" ? "Create Character" : "Save Changes"}
+            </span>
           </button>
         </div>
       </div>

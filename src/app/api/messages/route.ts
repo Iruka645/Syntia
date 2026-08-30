@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getChatResponse, AIProvider } from "@/lib/ai-provider";
 import { decrypt } from "@/lib/encryption";
+import { buildRoleplaySystemPrompt } from "@/lib/prompt-builder";
 import { SessionUser } from "@/types";
 
 export async function GET(req: Request) {
@@ -49,9 +50,9 @@ export async function POST(req: Request) {
     // 1. Get Chat, Character, User AI Settings and Archive
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      include: { 
+      include: {
         character: true,
-        archive: true // Include archive content
+        archive: true, // Include archive content
       },
     });
 
@@ -61,17 +62,18 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { defaultProvider: true, defaultModel: true, apiKey: true }
+      select: { defaultProvider: true, defaultModel: true, apiKey: true, baseUrl: true },
     });
 
     // Determine Provider and Key with layered priority
-    const provider: AIProvider = (chat.character.provider as AIProvider) || (user?.defaultProvider as AIProvider) || "gemini";
+    const provider: AIProvider =
+      (chat.character.provider as AIProvider) || (user?.defaultProvider as AIProvider) || "gemini";
     let apiKey = "";
 
     try {
       if (chat.character.apiKey) {
         apiKey = decrypt(chat.character.apiKey);
-      } else if (user?.apiKey) {
+      } else if (user?.apiKey && user.defaultProvider === provider) {
         apiKey = decrypt(user.apiKey);
       }
     } catch (e) {
@@ -84,12 +86,16 @@ export async function POST(req: Request) {
       else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
       else if (provider === "claude") apiKey = process.env.ANTHROPIC_API_KEY || "";
       else if (provider === "grok") apiKey = process.env.XAI_API_KEY || "";
+      else if (provider === "local") apiKey = process.env.LOCAL_AI_API_KEY || "";
     }
 
-    if (!apiKey) {
-      return NextResponse.json({ 
-        message: `API Key for ${provider} is missing. Please set it in Settings or Character settings.` 
-      }, { status: 400 });
+    if (!apiKey && provider !== "local") {
+      return NextResponse.json(
+        {
+          message: `API Key for ${provider} is missing. Please set it in Settings or Character settings.`,
+        },
+        { status: 400 }
+      );
     }
 
     let userMessage = null;
@@ -107,9 +113,9 @@ export async function POST(req: Request) {
     // 3. Get Recent History for AI context
     const limit = parseInt(process.env.CONTEXT_WINDOW_LIMIT || "20");
     const previousMessages = await prisma.message.findMany({
-      where: { 
+      where: {
         chatId,
-        id: isReroll ? { not: oldAiMessageId } : undefined 
+        id: isReroll ? { not: oldAiMessageId } : undefined,
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -117,18 +123,19 @@ export async function POST(req: Request) {
 
     // Format history for unified dispatcher
     const history = previousMessages
-      .filter(m => !userMessage || m.id !== userMessage.id) 
+      .filter((m) => !userMessage || m.id !== userMessage.id)
       .reverse()
-      .map(m => ({
+      .map((m) => ({
         role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
         content: m.content,
       }));
 
-    // Construct final system prompt with Archive context if available
-    let finalSystemPrompt = chat.character.systemPrompt;
-    if (chat.archive) {
-      finalSystemPrompt = `USER IDENTITY ARCHIVE:\n${chat.archive.content}\n\n${finalSystemPrompt}`;
-    }
+    // Establish the AI's character identity before adding context about the user.
+    const finalSystemPrompt = buildRoleplaySystemPrompt({
+      characterName: chat.character.name,
+      characterPrompt: chat.character.systemPrompt,
+      userArchive: chat.archive?.content,
+    });
 
     // Resolve Model Name with layered priority
     let modelName = (chat.character.model as string) || (user?.defaultModel as string) || "";
@@ -137,7 +144,11 @@ export async function POST(req: Request) {
       else if (provider === "openai") modelName = "gpt-4o";
       else if (provider === "claude") modelName = "claude-3-5-sonnet-20241022";
       else if (provider === "grok") modelName = "grok-2-latest";
+      else if (provider === "local") modelName = process.env.LOCAL_AI_MODEL || "";
     }
+
+    const baseUrl =
+      chat.character.baseUrl || user?.baseUrl || process.env.LOCAL_AI_BASE_URL || undefined;
 
     // 4. Get AI Response
     const aiResponseText = await getChatResponse(
@@ -146,7 +157,8 @@ export async function POST(req: Request) {
       modelName,
       finalSystemPrompt,
       history,
-      content
+      content,
+      baseUrl
     );
 
     // 5. Save or Update AI Message
@@ -154,7 +166,7 @@ export async function POST(req: Request) {
     if (isReroll && oldAiMessageId) {
       aiMessage = await prisma.message.update({
         where: { id: oldAiMessageId },
-        data: { content: aiResponseText }
+        data: { content: aiResponseText },
       });
     } else {
       aiMessage = await prisma.message.create({
@@ -177,20 +189,37 @@ export async function POST(req: Request) {
 
     const message = error instanceof Error ? error.message : errStr;
 
-    if (errStr.includes("503") || errStr.toLowerCase().includes("high demand") || errStr.toLowerCase().includes("overloaded") || errStr.toLowerCase().includes("service unavailable")) {
+    if (
+      errStr.includes("503") ||
+      errStr.toLowerCase().includes("high demand") ||
+      errStr.toLowerCase().includes("overloaded") ||
+      errStr.toLowerCase().includes("service unavailable")
+    ) {
       userAdvice = `Model is currently experiencing high demand/heavy load. Please try selecting a different model in Settings or try again later.`;
-    } else if (errStr.includes("401") || errStr.toLowerCase().includes("unauthorized") || errStr.toLowerCase().includes("invalid api key") || errStr.toLowerCase().includes("api_key_invalid")) {
+    } else if (
+      errStr.includes("401") ||
+      errStr.toLowerCase().includes("unauthorized") ||
+      errStr.toLowerCase().includes("invalid api key") ||
+      errStr.toLowerCase().includes("api_key_invalid")
+    ) {
       userAdvice = `API Key appears to be invalid or unauthorized. Please verify your credentials.`;
-    } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found") || errStr.toLowerCase().includes("does not exist")) {
+    } else if (
+      errStr.includes("404") ||
+      errStr.toLowerCase().includes("not found") ||
+      errStr.toLowerCase().includes("does not exist")
+    ) {
       userAdvice = `Model was not found or is not supported by your API key/tier. Please verify the model name.`;
     } else {
       userAdvice = `Provider error: ${message}`;
     }
 
-    return NextResponse.json({ 
-      error: true, 
-      message: userAdvice,
-      rawError: errStr 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: true,
+        message: userAdvice,
+        rawError: errStr,
+      },
+      { status: 500 }
+    );
   }
 }

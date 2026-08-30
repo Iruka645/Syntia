@@ -1,5 +1,3 @@
-
-
 export interface Character {
   id: number;
   name: string;
@@ -10,6 +8,7 @@ export interface Character {
   model?: string;
   systemPrompt: string;
   apiKey?: string;
+  baseUrl?: string;
 }
 
 export interface Message {
@@ -41,7 +40,13 @@ export interface SessionUser {
   image?: string | null;
 }
 
-export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JsonValue }
+  | JsonValue[];
 
 export interface ApiResponse<T = JsonValue> {
   data?: T;

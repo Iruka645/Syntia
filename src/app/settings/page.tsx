@@ -1,13 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ProviderSelector from "@/components/settings/ProviderSelector";
 import ModelSelector from "@/components/settings/ModelSelector";
 import ArchiveList from "@/components/settings/ArchiveList";
-import { 
-  Save,Brain, CheckCircle2, AlertCircle, 
-  ArrowLeft, User as UserIcon, Shield, ScrollText, Cpu, Play
+import {
+  Save,
+  Brain,
+  CheckCircle2,
+  AlertCircle,
+  ArrowLeft,
+  User as UserIcon,
+  Shield,
+  ScrollText,
+  Cpu,
+  Play,
+  Terminal,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -24,19 +33,18 @@ export default function SettingsPage() {
   const [provider, setProvider] = useState("gemini");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
 
   // Testing State
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string; modelUsed?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    modelUsed?: string;
+  } | null>(null);
 
-  useEffect(() => {
-    const loadSettings = async()=>{
-      
-    }
-    loadSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch("/api/user/settings");
       if (res.ok) {
@@ -46,13 +54,40 @@ export default function SettingsPage() {
         setProvider(data.defaultProvider);
         setModel(data.defaultModel || "");
         setApiKey(data.apiKey || "");
+        setBaseUrl(data.baseUrl || "");
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/user/settings")
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || cancelled) return;
+        setName(data.name || "");
+        setUsername(data.username || "");
+        setProvider(data.defaultProvider || "gemini");
+        setModel(data.defaultModel || "");
+        setApiKey(data.apiKey || "");
+        setBaseUrl(data.baseUrl || "");
+      })
+      .catch((error) => {
+        if (!cancelled) console.error("Failed to fetch settings:", error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -61,13 +96,14 @@ export default function SettingsPage() {
       const res = await fetch("/api/user/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name, 
-          username, 
-          password: password || undefined, 
-          defaultProvider: provider, 
+        body: JSON.stringify({
+          name,
+          username,
+          password: password || undefined,
+          defaultProvider: provider,
           defaultModel: model,
-          apiKey 
+          apiKey,
+          baseUrl,
         }),
       });
 
@@ -80,7 +116,10 @@ export default function SettingsPage() {
         setMessage({ type: "error", text: data.error || "Failed to save settings." });
       }
     } catch (error) {
-      setMessage({ type: "error", text: `An error occurred while saving. Detail: ${JSON.stringify(error)}` });
+      setMessage({
+        type: "error",
+        text: `An error occurred while saving. Detail: ${JSON.stringify(error)}`,
+      });
     } finally {
       setSaving(false);
     }
@@ -93,26 +132,26 @@ export default function SettingsPage() {
       const res = await fetch("/api/user/test-model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey, model }),
+        body: JSON.stringify({ provider, apiKey, model, baseUrl }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setTestResult({
           success: true,
           message: data.message,
-          modelUsed: data.modelUsed
+          modelUsed: data.modelUsed,
         });
       } else {
         setTestResult({
           success: false,
-          error: data.error || "Testing failed. Model may be unavailable."
+          error: data.error || "Testing failed. Model may be unavailable.",
         });
       }
     } catch (err) {
       console.error("Test Error:", err);
       setTestResult({
         success: false,
-        error: "Network error while connecting to test endpoint."
+        error: "Network error while connecting to test endpoint.",
       });
     } finally {
       setTesting(false);
@@ -133,8 +172,8 @@ export default function SettingsPage() {
       <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link 
-              href="/characters" 
+            <Link
+              href="/characters"
               className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -161,7 +200,9 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold">Profile Information</h2>
-              <p className="text-zinc-500 text-sm">Update your display name and login credentials.</p>
+              <p className="text-zinc-500 text-sm">
+                Update your display name and login credentials.
+              </p>
             </div>
           </div>
 
@@ -187,7 +228,9 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-zinc-400">New Password (leave blank to keep current)</label>
+              <label className="text-sm font-medium text-zinc-400">
+                New Password (leave blank to keep current)
+              </label>
               <input
                 type="password"
                 value={password}
@@ -207,7 +250,9 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold">AI Provider Settings</h2>
-              <p className="text-zinc-500 text-sm">Configure which AI brain powers your conversations.</p>
+              <p className="text-zinc-500 text-sm">
+                Configure which AI brain powers your conversations.
+              </p>
             </div>
           </div>
 
@@ -225,17 +270,42 @@ export default function SettingsPage() {
               <ModelSelector provider={provider} value={model} onChange={setModel} />
             </div>
 
+            {provider === "local" && (
+              <div className="pt-6 border-t border-zinc-800/50">
+                <div className="flex items-center gap-2 mb-4">
+                  <Terminal className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-sm font-medium text-zinc-400">Unsloth API Endpoint</h3>
+                </div>
+                <input
+                  type="url"
+                  value={baseUrl}
+                  onChange={(event) => setBaseUrl(event.target.value)}
+                  placeholder="http://127.0.0.1:8000/v1"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-cyan-500 transition-colors font-mono text-sm"
+                />
+                <p className="text-xs text-zinc-500 mt-2 px-2">
+                  You may enter the API base URL or the full /v1/chat/completions endpoint.
+                </p>
+              </div>
+            )}
+
             <div className="pt-6 border-t border-zinc-800/50">
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="w-4 h-4 text-purple-400" />
-                <h3 className="text-sm font-medium text-zinc-400">Secure API Key</h3>
+                <h3 className="text-sm font-medium text-zinc-400">
+                  {provider === "local" ? "API Key (optional)" : "Secure API Key"}
+                </h3>
               </div>
               <div className="relative">
                 <input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your API key..."
+                  placeholder={
+                    provider === "local"
+                      ? "Enter the key generated by Unsloth, if enabled..."
+                      : "Enter your API key..."
+                  }
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-purple-500 transition-colors"
                 />
                 {(apiKey.endsWith("...") || apiKey.includes("••••")) && (
@@ -249,7 +319,9 @@ export default function SettingsPage() {
             <div className="pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-bold text-white">Test Provider & Model Connection</h4>
-                <p className="text-xs text-zinc-500">Send a quick test message to ensure key validity and server health.</p>
+                <p className="text-xs text-zinc-500">
+                  Send a quick test message to ensure key validity and server health.
+                </p>
               </div>
               <button
                 type="button"
@@ -272,11 +344,13 @@ export default function SettingsPage() {
             </div>
 
             {testResult && (
-              <div className={`p-4 rounded-xl border text-sm animate-in fade-in slide-in-from-top-1 duration-200 ${
-                testResult.success 
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" 
-                  : "bg-amber-500/10 border-amber-500/30 text-amber-300"
-              }`}>
+              <div
+                className={`p-4 rounded-xl border text-sm animate-in fade-in slide-in-from-top-1 duration-200 ${
+                  testResult.success
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                    : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                }`}
+              >
                 {testResult.success ? (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 font-bold text-emerald-400">
@@ -284,7 +358,11 @@ export default function SettingsPage() {
                       Connection Successful!
                     </div>
                     <p className="text-xs text-zinc-300">
-                      Model <span className="font-mono text-emerald-400 font-bold">[{testResult.modelUsed}]</span> responded: &quot;{testResult.message}&quot;
+                      Model{" "}
+                      <span className="font-mono text-emerald-400 font-bold">
+                        [{testResult.modelUsed}]
+                      </span>{" "}
+                      responded: &quot;{testResult.message}&quot;
                     </p>
                   </div>
                 ) : (
@@ -293,9 +371,7 @@ export default function SettingsPage() {
                       <AlertCircle className="w-4 h-4 shrink-0" />
                       Testing Diagnostic Warning
                     </div>
-                    <p className="text-xs text-zinc-300">
-                      {testResult.error}
-                    </p>
+                    <p className="text-xs text-zinc-300">{testResult.error}</p>
                   </div>
                 )}
               </div>
@@ -311,19 +387,27 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold">User Archives (Personas)</h2>
-              <p className="text-zinc-500 text-sm">Create different personas or context for the AI to recognize you.</p>
+              <p className="text-zinc-500 text-sm">
+                Create different personas or context for the AI to recognize you.
+              </p>
             </div>
           </div>
-          
+
           <ArchiveList />
         </section>
 
         {/* Status Message */}
         {message && (
-          <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300 ${
-            message.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
-          }`}>
-            {message.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          <div
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300 ${
+              message.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+            }`}
+          >
+            {message.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
             <span className="font-medium">{message.text}</span>
           </div>
         )}

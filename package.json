@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3500",
+    "dev:https": "node scripts/dev-https.mjs",
     "lan": "npx prisma generate && npx prisma migrate deploy && next dev -p 3500 -H 0.0.0.0",
+    "lan:https": "npx prisma generate && npx prisma migrate deploy && node scripts/dev-https.mjs --lan",
     "build": "next build",
     "start": "next start -p 3500",
     "lint": "eslint",
@@ -18,6 +20,7 @@
     "test:e2e": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& playwright test",
     "test:e2e:run": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& set PLAYWRIGHT_EXTERNAL_SERVER=1&& playwright test",
     "playwright:install": "set PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers&& playwright install chromium",
+    "reset-password": "node scripts/reset-password.mjs",
     "validate": "npm run lint && npm run type-check && npm run test",
     "prepare": "husky"
   },

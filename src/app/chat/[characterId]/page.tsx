@@ -19,6 +19,7 @@ export default function ChatPage() {
     setInputValue,
     isLoading,
     isSending,
+    isResetting,
     editingMessageId,
     setEditingMessageId,
     editValue,
@@ -36,6 +37,7 @@ export default function ChatPage() {
     handleUndoReroll,
     handleResend,
     handleUpdateArchive,
+    handleResetChat,
   } = useChat(characterId);
 
   if (isLoading) {
@@ -48,12 +50,17 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100">
-      <ChatHeader chat={chat} onUpdateArchive={handleUpdateArchive} />
+      <ChatHeader
+        chat={chat}
+        onUpdateArchive={handleUpdateArchive}
+        onResetChat={handleResetChat}
+        isResetting={isResetting}
+      />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6">
         {messages.map((msg, index) => (
-          <MessageBubble 
+          <MessageBubble
             key={msg.id}
             msg={msg}
             chat={chat}
@@ -101,9 +108,7 @@ export default function ChatPage() {
             </div>
             <div className="flex-1 text-xs">
               <h4 className="font-bold text-amber-400 text-sm mb-1">AI Communication Disruption</h4>
-              <p className="text-zinc-300 leading-relaxed mb-3">
-                {chatError.message}
-              </p>
+              <p className="text-zinc-300 leading-relaxed mb-3">{chatError.message}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href="/settings"
@@ -125,7 +130,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <MessageInput 
+      <MessageInput
         inputValue={inputValue}
         setInputValue={setInputValue}
         isSending={isSending}

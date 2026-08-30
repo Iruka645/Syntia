@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Sparkles } from "lucide-react";
 
 interface ModelSelectorProps {
@@ -24,14 +24,15 @@ const providerModels: Record<string, { id: string; name: string; isLatest?: bool
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", isLatest: true },
     { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
   ],
-  grok: [
-    { id: "grok-2-latest", name: "Grok 2 Latest", isLatest: true },
-  ],
+  grok: [{ id: "grok-2-latest", name: "Grok 2 Latest", isLatest: true }],
 };
 
 export default function ModelSelector({ provider, value, onChange }: ModelSelectorProps) {
-  const models = providerModels[provider] || providerModels.gemini;
-  const isPreset = models.some(m => m.id === value);
+  const models = useMemo(
+    () => (provider === "local" ? [] : providerModels[provider] || providerModels.gemini),
+    [provider]
+  );
+  const isPreset = models.some((m) => m.id === value);
 
   const [prevProvider, setPrevProvider] = useState(provider);
   const [isCustomMode, setIsCustomMode] = useState(!isPreset && value !== "");
@@ -45,9 +46,11 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
 
   // If provider changes or value becomes invalid for new provider, update parent via effect
   useEffect(() => {
-    const isCurrentValueInNewModels = models.some(m => m.id === value);
+    if (provider === "local") return;
+
+    const isCurrentValueInNewModels = models.some((m) => m.id === value);
     if (!value || (!isCustomMode && !isCurrentValueInNewModels)) {
-      const defaultLatest = models.find(m => m.isLatest)?.id || models[0]?.id;
+      const defaultLatest = models.find((m) => m.isLatest)?.id || models[0]?.id;
       if (defaultLatest && defaultLatest !== value) {
         onChange(defaultLatest);
       }
@@ -70,6 +73,24 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
   };
 
   const isCustomActive = isCustomMode || (!isPreset && value !== "");
+
+  if (provider === "local") {
+    return (
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Model ID exposed by Unsloth (for example, local-model)"
+          required
+          className="w-full bg-zinc-950 border border-emerald-500/50 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono text-sm text-zinc-100"
+        />
+        <p className="px-2 text-xs text-zinc-500">
+          Use the exact model ID shown by the local server.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -95,13 +116,9 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
                     </span>
                   )}
                 </span>
-                <span className="mt-1 text-xs text-zinc-500 font-mono">
-                  {m.id}
-                </span>
+                <span className="mt-1 text-xs text-zinc-500 font-mono">{m.id}</span>
               </div>
-              {selected && (
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              )}
+              {selected && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
             </label>
           );
         })}
@@ -116,16 +133,10 @@ export default function ModelSelector({ provider, value, onChange }: ModelSelect
           `}
         >
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-white">
-              Custom Model
-            </span>
-            <span className="mt-1 text-xs text-zinc-500">
-              Type custom model string
-            </span>
+            <span className="text-sm font-bold text-white">Custom Model</span>
+            <span className="mt-1 text-xs text-zinc-500">Type custom model string</span>
           </div>
-          {isCustomActive && (
-            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-          )}
+          {isCustomActive && <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />}
         </label>
       </div>
 

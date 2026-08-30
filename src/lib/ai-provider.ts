@@ -2,11 +2,12 @@ import { getGeminiResponse } from "./providers/gemini";
 import { getOpenAIResponse } from "./providers/openai";
 import { getClaudeResponse } from "./providers/claude";
 import { getGrokResponse } from "./providers/grok";
+import { getLocalResponse } from "./providers/local";
 
-export type AIProvider = 'gemini' | 'openai' | 'claude' | 'grok';
+export type AIProvider = "gemini" | "openai" | "claude" | "grok" | "local";
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -16,17 +17,20 @@ export async function getChatResponse(
   modelName: string,
   systemPrompt: string,
   history: ChatMessage[],
-  userMessage: string
+  userMessage: string,
+  baseUrl?: string
 ): Promise<string> {
   switch (provider) {
-    case 'gemini':
+    case "gemini":
       return getGeminiResponse(apiKey, modelName, systemPrompt, history, userMessage);
-    case 'openai':
+    case "openai":
       return getOpenAIResponse(apiKey, modelName, systemPrompt, history, userMessage);
-    case 'claude':
+    case "claude":
       return getClaudeResponse(apiKey, modelName, systemPrompt, history, userMessage);
-    case 'grok':
+    case "grok":
       return getGrokResponse(apiKey, modelName, systemPrompt, history, userMessage);
+    case "local":
+      return getLocalResponse(apiKey, modelName, systemPrompt, history, userMessage, baseUrl);
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);
   }

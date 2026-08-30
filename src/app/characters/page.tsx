@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { User, MessageCircle, Plus, LogOut, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { SessionUser } from "@/types";
-import Image from "next/image";
+import { AvatarImage } from "@/components/AvatarImage";
 
 interface Character {
   id: number;
@@ -69,9 +69,9 @@ export default function CharacterSelection() {
             </div>
             <span className="font-bold text-xl tracking-tight">MyChatBot</span>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <Link 
+            <Link
               href="/settings"
               className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 transition-all group cursor-pointer"
               title="AI Settings"
@@ -79,10 +79,12 @@ export default function CharacterSelection() {
               <div className="w-6 h-6 rounded-full bg-zinc-700 group-hover:bg-indigo-600 flex items-center justify-center transition-colors">
                 <User className="w-4 h-4 text-zinc-400 group-hover:text-white" />
               </div>
-              <span className="text-sm font-medium group-hover:text-indigo-400 transition-colors">{session?.user?.name}</span>
+              <span className="text-sm font-medium group-hover:text-indigo-400 transition-colors">
+                {session?.user?.name}
+              </span>
             </Link>
 
-            <button 
+            <button
               onClick={() => router.push("/settings")}
               className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-indigo-400"
               title="AI Settings"
@@ -90,7 +92,7 @@ export default function CharacterSelection() {
               <Settings className="w-5 h-5" />
             </button>
 
-            <button 
+            <button
               onClick={() => signOut()}
               className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-red-400"
               title="Sign Out"
@@ -107,7 +109,7 @@ export default function CharacterSelection() {
             <h1 className="text-4xl font-bold mb-2">Choose Your Character</h1>
             <p className="text-zinc-400">Select a character to start a conversation</p>
           </div>
-          <button 
+          <button
             onClick={() => router.push("/characters/new")}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
           >
@@ -118,28 +120,28 @@ export default function CharacterSelection() {
 
         {/* Character Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {characters.map((char) => (
-            <div 
+          {characters.map((char, index) => (
+            <div
               key={char.id}
               className="group relative bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer"
               onClick={() => router.push(`/chat/${char.id}`)}
             >
               {/* Card Header (Avatar) */}
               <div className="h-48 bg-zinc-800 relative overflow-hidden">
-                {char.avatarUrl ? (
-                  <Image 
-                    src={char.avatarUrl} 
-                    alt={char.name} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                ) : (
+                <AvatarImage
+                  src={char.avatarUrl}
+                  alt={char.name}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  loading={index === 0 ? "eager" : "lazy"}
+                >
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-zinc-700/20 to-zinc-900/40 animate-pulse"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <User className="w-20 h-20 text-zinc-700 opacity-50" />
                     </div>
                   </>
-                )}
+                </AvatarImage>
                 {/* Overlay on hover */}
                 <div className="absolute inset-0 bg-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <div className="bg-white text-indigo-600 font-bold px-6 py-2 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-transform">
@@ -150,14 +152,16 @@ export default function CharacterSelection() {
 
               {/* Card Content */}
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400 transition-colors">{char.name}</h3>
-                <p className="text-zinc-400 text-sm line-clamp-2 mb-4 h-10">
-                  {char.description}
-                </p>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400 transition-colors">
+                  {char.name}
+                </h3>
+                <p className="text-zinc-400 text-sm line-clamp-2 mb-4 h-10">{char.description}</p>
                 <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                  <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Active Now</span>
+                  <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
+                    Active Now
+                  </span>
                   {(session?.user as SessionUser)?.id === char.createdBy.toString() && (
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/characters/manage/${char.id}`);

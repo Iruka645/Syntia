@@ -8,7 +8,7 @@ import { SessionUser } from "@/types";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -30,7 +30,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl, provider, model, apiKey } = await req.json();
+    const {
+      name,
+      description,
+      systemPrompt,
+      greeting,
+      avatarUrl,
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+    } = await req.json();
 
     if (!name || !description || !systemPrompt || !greeting) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
@@ -46,6 +56,7 @@ export async function POST(req: Request) {
         provider: provider || null,
         model: model || null,
         apiKey: apiKey ? encrypt(apiKey) : null,
+        baseUrl: baseUrl?.trim() || null,
         createdBy: parseInt((session.user as SessionUser).id),
       },
     });

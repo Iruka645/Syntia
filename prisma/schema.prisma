@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  name            String    // Display name
-  username        String    @unique
-  password        String    // bcrypt hashed
-  defaultProvider String?   @map("default_provider")
-  defaultModel    String?   @map("default_model")
-  apiKey          String?   @map("api_key")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id              Int      @id @default(autoincrement())
+  name            String // Display name
+  username        String   @unique
+  password        String // bcrypt hashed
+  defaultProvider String?  @map("default_provider")
+  defaultModel    String?  @map("default_model")
+  apiKey          String?  @map("api_key")
+  baseUrl         String?  @map("base_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   characters Character[]
   chats      Chat[]
@@ -28,18 +29,19 @@ model User {
 }
 
 model Character {
-  id           Int       @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   name         String
   description  String?
-  avatarUrl    String?   @map("avatar_url")
-  systemPrompt String    @map("system_prompt")
+  avatarUrl    String?  @map("avatar_url")
+  systemPrompt String   @map("system_prompt")
   greeting     String
-  provider     String?   @map("provider")
-  model        String?   @map("model")
-  apiKey       String?   @map("api_key")
-  createdBy    Int       @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  provider     String?  @map("provider")
+  model        String?  @map("model")
+  apiKey       String?  @map("api_key")
+  baseUrl      String?  @map("base_url")
+  createdBy    Int      @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   creator User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   chats   Chat[]
@@ -81,7 +83,7 @@ model Chat {
 model Message {
   id        Int      @id @default(autoincrement())
   chatId    Int      @map("chat_id")
-  role      String   // 'user' or 'assistant'
+  role      String // 'user' or 'assistant'
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 

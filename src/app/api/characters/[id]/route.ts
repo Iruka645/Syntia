@@ -5,10 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { encrypt } from "@/lib/encryption";
 import { SessionUser } from "@/types";
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -32,7 +29,17 @@ export async function PATCH(
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
-    const { name, description, systemPrompt, greeting, avatarUrl, provider, model, apiKey } = await req.json();
+    const {
+      name,
+      description,
+      systemPrompt,
+      greeting,
+      avatarUrl,
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+    } = await req.json();
 
     const updateData: {
       name: string;
@@ -43,6 +50,7 @@ export async function PATCH(
       provider: string | null;
       model: string | null;
       apiKey?: string | null;
+      baseUrl: string | null;
     } = {
       name,
       description,
@@ -51,10 +59,14 @@ export async function PATCH(
       avatarUrl,
       provider: provider || null,
       model: model || null,
+      baseUrl: baseUrl?.trim() || null,
     };
 
     if (apiKey && !apiKey.endsWith("...") && !apiKey.includes("••••")) {
       updateData.apiKey = encrypt(apiKey);
+    } else if (provider !== character.provider) {
+      // Never reuse an encrypted credential after switching this character's provider.
+      updateData.apiKey = null;
     } else if (apiKey === "") {
       updateData.apiKey = null;
     }
@@ -71,10 +83,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -109,10 +118,7 @@ export async function DELETE(
   }
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

@@ -15,6 +15,7 @@ export function useChat(characterId: string | string[] | undefined) {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
   const [rollBackState, setRollBackState] = useState<{ id: number; content: string } | null>(null);
@@ -298,6 +299,50 @@ export function useChat(characterId: string | string[] | undefined) {
     }
   };
 
+  const handleResetChat = async () => {
+    if (!chat || !characterId || isSending || isResetting) return false;
+
+    setIsResetting(true);
+    setChatError(null);
+
+    try {
+      const res = await fetch(`/api/chats/${characterId}`, { method: "DELETE" });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        setChatError({
+          message: errorData?.message || "Failed to reset chat history.",
+        });
+        return false;
+      }
+
+      setMessages(
+        chat.character.greeting
+          ? [
+              {
+                id: 0,
+                role: "assistant",
+                content: chat.character.greeting,
+                createdAt: new Date().toISOString(),
+              },
+            ]
+          : []
+      );
+      setEditingMessageId(null);
+      setEditValue("");
+      setRollBackState(null);
+      setActiveMenuId(null);
+      setInputValue("");
+      return true;
+    } catch (error) {
+      console.error("Reset Chat Error:", error);
+      setChatError({ message: "Network error while resetting chat history." });
+      return false;
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return {
     chat,
     messages,
@@ -305,6 +350,7 @@ export function useChat(characterId: string | string[] | undefined) {
     setInputValue,
     isLoading: status === "loading" || isLoading,
     isSending,
+    isResetting,
     editingMessageId,
     setEditingMessageId,
     editValue,
@@ -323,5 +369,6 @@ export function useChat(characterId: string | string[] | undefined) {
     handleUndoReroll,
     handleResend,
     handleUpdateArchive,
+    handleResetChat,
   };
 }
